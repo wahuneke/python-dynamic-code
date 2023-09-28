@@ -35,10 +35,10 @@ version = ".".join(release.split(".")[:2])
 language = "en"
 
 pygments_style = "sphinx"
-html_logo = "static/img/pdc_logo.png"
+html_logo = "static/img/python_dynamic_code.png"
 html_theme = "alabaster"
 html_theme_options = {
-    "logo": "img/pdc_logo.png",
+    "logo": "img/python_dynamic_code.png",
     "description": "Accelerate your fast path, at runtime",
     "github_user": "wahuneke",
     "github_repo": "python-dynamic-code",

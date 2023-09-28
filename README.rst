@@ -10,10 +10,10 @@ Consult `project documentation`_  for more information.
 
 .. badges
 
-.. |pypi| image:: https://img.shields.io/pypi/v/pdc.svg
+.. |pypi| image:: https://img.shields.io/pypi/v/python_dynamic_code.svg
     :target: https://pypi.org/pypi/python-dynamic-code
 
-.. |versions| image:: https://img.shields.io/pypi/pyversions/pdc.svg
+.. |versions| image:: https://img.shields.io/pypi/pyversions/python_dynamic_code.svg
     :target: https://pypi.org/pypi/python-dynamic-code
 
 .. |github-actions| image:: https://github.com/wahuneke/pytest-dynamic-code/workflows/main/badge.svg
