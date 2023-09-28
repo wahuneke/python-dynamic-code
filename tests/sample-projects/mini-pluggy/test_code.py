@@ -66,6 +66,10 @@ def _multicall(
     caller_kwargs: Mapping[str, object],
     firstresult: bool,
 ) -> object | list[object]:
+    # PDC-Function
+    #   GenDrop: caller_kwargs
+    # PDC-Start Section 1
+    # PDC-Verbatim
     __tracebackhide__ = True
     results: list[object] = []
     exception = None
@@ -73,16 +77,22 @@ def _multicall(
     try:  # run impl and wrapper setup functions in a loop
         teardowns: list = []
         try:
+            # PDC-End Section 1
             for hook_impl in reversed(hook_impls):
+                # PDC-Start Section 2
+                # PDC-Kill
                 try:
                     args = [caller_kwargs[argname] for argname in hook_impl.argnames]
                 except KeyError:
                     for argname in hook_impl.argnames:
                         if argname not in caller_kwargs:
-                            raise HookCallError(
-                                f"hook call must provide argument {argname!r}"
-                            )
+                            raise HookCallError(f"hook call must provide argument {argname!r}")
+                # PDC-End Section 2
 
+                # PDC-Start Section 3
+                # PDC-TemplateCode
+                # PDC-Eval ArgList ", ".join(hook_impl.argnames)
+                # PDC-Replace ArgList *args
                 if hook_impl.hookwrapper:
                     only_new_style_wrappers = False
                     try:
@@ -112,9 +122,15 @@ def _multicall(
                             break
         except BaseException as exc:
             exception = exc
+    # PDC-End Section 3
+    # PDC-Start Section 4
+    # PDC-TemplateCode
     finally:
         # Fast path - only new-style wrappers, no Result.
+        # PDC-KillLine
         if only_new_style_wrappers:
+            # PDC-Start Section 4.1
+            # PDC-KillIf not only_new_style_wrappers
             if firstresult:  # first result hooks return a single value
                 result = results[0] if results else None
             else:
@@ -144,13 +160,15 @@ def _multicall(
                 raise exception.with_traceback(exception.__traceback__)
             else:
                 return result
+            # PDC-End Section 4.1
 
         # Slow path - need to support old-style wrappers.
+        # PDC-KillLine
         else:
+            # PDC-Start Section 4.2
+            # PDC-KillIf only_new_style_wrappers
             if firstresult:  # first result hooks return a single value
-                outcome: Result[object | list[object]] = Result(
-                    results[0] if results else None, exception
-                )
+                outcome: Result[object | list[object]] = Result(results[0] if results else None, exception)
             else:
                 outcome = Result(results, exception)
 
@@ -181,5 +199,7 @@ def _multicall(
                     _raise_wrapfail(teardown, "has second yield")
 
             return outcome.get_result()
+            # PDC-End Section 4.2
+    # PDC-End Section 4
 """
     )
