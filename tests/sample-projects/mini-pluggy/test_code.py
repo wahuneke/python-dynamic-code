@@ -1,6 +1,10 @@
 import pytest
-from pluggy import PluginManager, HookspecMarker, HookimplMarker, HookImpl, HookCaller
 from mini_pluggy import convert_caller
+from pluggy import HookCaller
+from pluggy import HookimplMarker
+from pluggy import HookspecMarker
+from pluggy import PluginManager
+
 
 @pytest.fixture()
 def pm() -> PluginManager:
@@ -53,7 +57,9 @@ def test_confirm_codegen(pm):
     assert isinstance(pm.hook.fun, HookCaller)
 
     new_caller = convert_caller(pm.hook.fun)
-    assert new_caller._compiled.code == """\
+    assert (
+        new_caller._compiled.code
+        == """\
 def _multicall(
     hook_name: str,
     hook_impls: Sequence[HookImpl],
@@ -176,3 +182,4 @@ def _multicall(
 
             return outcome.get_result()
 """
+    )

@@ -1,0 +1,2 @@
+The presence of this file is necessary so that static checkers such as `mypy` will recognize and use
+the type information included in this project.
