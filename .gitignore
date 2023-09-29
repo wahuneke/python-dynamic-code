@@ -59,5 +59,7 @@ docs/_changelog_towncrier_draft.rst
 target/
 *.swp
 
+# IDEs
+.idea
 
 src/python_dynamic_code/_version.py
