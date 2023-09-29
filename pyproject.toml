@@ -5,6 +5,11 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[project.urls]
+"Homepage" = "https://github.com/wahuneke/python-dynamic-code"
+"Bug Tracker" = "https://github.com/wahuneke/python-dynamic-code/issues"
+"Documentation" = "https://python-dynamic-code.readthedocs.io/en/latest/"
+
 [tool.setuptools_scm]
 write_to = "src/python_dynamic_code/_version.py"
 
