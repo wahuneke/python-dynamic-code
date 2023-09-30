@@ -31,141 +31,142 @@ def _multicall(
     caller_kwargs: Mapping[str, object],
     firstresult: bool,
 ) -> object | list[object]:
-    # PDC-Function
-    #   GenDrop: caller_kwargs
-    # PDC-Start Section 1
-    # PDC-Verbatim
-    __tracebackhide__ = True
-    results: list[object] = []
-    exception = None
-    only_new_style_wrappers = True
-    try:  # run impl and wrapper setup functions in a loop
-        teardowns: list = []
-        try:
-            # PDC-End Section 1
-            for hook_impl in reversed(hook_impls):
-                # PDC-Start Section 2
-                # PDC-Kill
+    with pdc_function(gendrop=["caller_kwargs"]):
+        if pdc_start("section 1", verbatim=True):
+            __tracebackhide__ = True
+            results: list[object] = []
+            exception = None
+            only_new_style_wrappers = True
+            try:  # run impl and wrapper setup functions in a loop
+                teardowns: list = []
                 try:
-                    args = [caller_kwargs[argname] for argname in hook_impl.argnames]
-                except KeyError:
-                    for argname in hook_impl.argnames:
-                        if argname not in caller_kwargs:
-                            raise HookCallError(f"hook call must provide argument {argname!r}")
-                # PDC-End Section 2
+                    if pdc_start("section 1.1"):
+                        # PDC-End Section 1
+                        for hook_impl in reversed(hook_impls):
+                            if pdc_unroll:
+                                if pdc_kill:
+                                    # PDC-Start Section 2
+                                    # PDC-Kill
+                                    try:
+                                        args = [caller_kwargs[argname] for argname in hook_impl.argnames]
+                                    except KeyError:
+                                        for argname in hook_impl.argnames:
+                                            if argname not in caller_kwargs:
+                                                raise HookCallError(f"hook call must provide argument {argname!r}")
 
-                # PDC-Start Section 3
-                # PDC-TemplateCode
-                # PDC-Eval ArgList ", ".join(hook_impl.argnames)
-                # PDC-Replace ArgList *args
-                if hook_impl.hookwrapper:
-                    only_new_style_wrappers = False
-                    try:
-                        # If this cast is not valid, a type error is raised below,
-                        # which is the desired response.
-                        res = hook_impl.function(*args)
-                        wrapper_gen = cast(Generator[None, Result[object], None], res)
-                        next(wrapper_gen)  # first yield
-                        teardowns.append((wrapper_gen,))
-                    except StopIteration:
-                        _raise_wrapfail(wrapper_gen, "did not yield")
-                elif hook_impl.wrapper:
-                    try:
-                        # If this cast is not valid, a type error is raised below,
-                        # which is the desired response.
-                        res = hook_impl.function(*args)
-                        function_gen = cast(Generator[None, object, object], res)
-                        next(function_gen)  # first yield
-                        teardowns.append(function_gen)
-                    except StopIteration:
-                        _raise_wrapfail(function_gen, "did not yield")
-                else:
-                    res = hook_impl.function(*args)
-                    if res is not None:
-                        results.append(res)
-                        if firstresult:  # halt further impl calls
-                            break
-        except BaseException as exc:
-            exception = exc
-    # PDC-End Section 3
-    # PDC-Start Section 4
-    # PDC-TemplateCode
-    finally:
-        # Fast path - only new-style wrappers, no Result.
-        # PDC-KillLine
-        if only_new_style_wrappers:
-            # PDC-Start Section 4.1
-            # PDC-KillIf not only_new_style_wrappers
-            if firstresult:  # first result hooks return a single value
-                result = results[0] if results else None
-            else:
-                result = results
-
-            # run all wrapper post-yield blocks
-            for teardown in reversed(teardowns):
-                try:
-                    if exception is not None:
-                        teardown.throw(exception)  # type: ignore[union-attr]
+                                if pdc_template({"ArgList": ", ".join(hook_impl.argnames)}):
+                                # PDC-Start Section 3
+                                # PDC-TemplateCode
+                                # PDC-Eval ArgList ", ".join(hook_impl.argnames)
+                                # PDC-Replace ArgList *args
+                                if hook_impl.hookwrapper:
+                                    only_new_style_wrappers = False
+                                    try:
+                                        # If this cast is not valid, a type error is raised below,
+                                        # which is the desired response.
+                                        res = hook_impl.function(*args)
+                                        wrapper_gen = cast(Generator[None, Result[object], None], res)
+                                        next(wrapper_gen)  # first yield
+                                        teardowns.append((wrapper_gen,))
+                                    except StopIteration:
+                                        _raise_wrapfail(wrapper_gen, "did not yield")
+                                elif hook_impl.wrapper:
+                                    try:
+                                        # If this cast is not valid, a type error is raised below,
+                                        # which is the desired response.
+                                        res = hook_impl.function(*args)
+                                        function_gen = cast(Generator[None, object, object], res)
+                                        next(function_gen)  # first yield
+                                        teardowns.append(function_gen)
+                                    except StopIteration:
+                                        _raise_wrapfail(function_gen, "did not yield")
+                                else:
+                                    res = hook_impl.function(*args)
+                                    if res is not None:
+                                        results.append(res)
+                                        if firstresult:  # halt further impl calls
+                                            break
+                except BaseException as exc:
+                    exception = exc
+            # PDC-End Section 3
+            # PDC-Start Section 4
+            # PDC-TemplateCode
+            finally:
+                # Fast path - only new-style wrappers, no Result.
+                # PDC-KillLine
+                if only_new_style_wrappers:
+                    # PDC-Start Section 4.1
+                    # PDC-KillIf not only_new_style_wrappers
+                    if firstresult:  # first result hooks return a single value
+                        result = results[0] if results else None
                     else:
-                        teardown.send(result)  # type: ignore[union-attr]
-                    # Following is unreachable for a well behaved hook wrapper.
-                    # Try to force finalizers otherwise postponed till GC action.
-                    # Note: close() may raise if generator handles GeneratorExit.
-                    teardown.close()  # type: ignore[union-attr]
-                except StopIteration as si:
-                    result = si.value
-                    exception = None
-                    continue
-                except BaseException as e:
-                    exception = e
-                    continue
-                _raise_wrapfail(teardown, "has second yield")  # type: ignore[arg-type]
+                        result = results
 
-            if exception is not None:
-                raise exception.with_traceback(exception.__traceback__)
-            else:
-                return result
-            # PDC-End Section 4.1
+                    # run all wrapper post-yield blocks
+                    for teardown in reversed(teardowns):
+                        try:
+                            if exception is not None:
+                                teardown.throw(exception)  # type: ignore[union-attr]
+                            else:
+                                teardown.send(result)  # type: ignore[union-attr]
+                            # Following is unreachable for a well behaved hook wrapper.
+                            # Try to force finalizers otherwise postponed till GC action.
+                            # Note: close() may raise if generator handles GeneratorExit.
+                            teardown.close()  # type: ignore[union-attr]
+                        except StopIteration as si:
+                            result = si.value
+                            exception = None
+                            continue
+                        except BaseException as e:
+                            exception = e
+                            continue
+                        _raise_wrapfail(teardown, "has second yield")  # type: ignore[arg-type]
 
-        # Slow path - need to support old-style wrappers.
-        # PDC-KillLine
-        else:
-            # PDC-Start Section 4.2
-            # PDC-KillIf only_new_style_wrappers
-            if firstresult:  # first result hooks return a single value
-                outcome: Result[object | list[object]] = Result(results[0] if results else None, exception)
-            else:
-                outcome = Result(results, exception)
+                    if exception is not None:
+                        raise exception.with_traceback(exception.__traceback__)
+                    else:
+                        return result
+                    # PDC-End Section 4.1
 
-            # run all wrapper post-yield blocks
-            for teardown in reversed(teardowns):
-                if isinstance(teardown, tuple):
-                    try:
-                        teardown[0].send(outcome)
-                        _raise_wrapfail(teardown[0], "has second yield")
-                    except StopIteration:
-                        pass
+                # Slow path - need to support old-style wrappers.
+                # PDC-KillLine
                 else:
-                    try:
-                        if outcome._exception is not None:
-                            teardown.throw(outcome._exception)
-                        else:
-                            teardown.send(outcome._result)
-                        # Following is unreachable for a well behaved hook wrapper.
-                        # Try to force finalizers otherwise postponed till GC action.
-                        # Note: close() may raise if generator handles GeneratorExit.
-                        teardown.close()
-                    except StopIteration as si:
-                        outcome.force_result(si.value)
-                        continue
-                    except BaseException as e:
-                        outcome.force_exception(e)
-                        continue
-                    _raise_wrapfail(teardown, "has second yield")
+                    # PDC-Start Section 4.2
+                    # PDC-KillIf only_new_style_wrappers
+                    if firstresult:  # first result hooks return a single value
+                        outcome: Result[object | list[object]] = Result(results[0] if results else None, exception)
+                    else:
+                        outcome = Result(results, exception)
 
-            return outcome.get_result()
-            # PDC-End Section 4.2
-    # PDC-End Section 4
+                    # run all wrapper post-yield blocks
+                    for teardown in reversed(teardowns):
+                        if isinstance(teardown, tuple):
+                            try:
+                                teardown[0].send(outcome)
+                                _raise_wrapfail(teardown[0], "has second yield")
+                            except StopIteration:
+                                pass
+                        else:
+                            try:
+                                if outcome._exception is not None:
+                                    teardown.throw(outcome._exception)
+                                else:
+                                    teardown.send(outcome._result)
+                                # Following is unreachable for a well behaved hook wrapper.
+                                # Try to force finalizers otherwise postponed till GC action.
+                                # Note: close() may raise if generator handles GeneratorExit.
+                                teardown.close()
+                            except StopIteration as si:
+                                outcome.force_result(si.value)
+                                continue
+                            except BaseException as e:
+                                outcome.force_exception(e)
+                                continue
+                            _raise_wrapfail(teardown, "has second yield")
+
+                    return outcome.get_result()
+                    # PDC-End Section 4.2
+            # PDC-End Section 4
 
 
 class MultiCallBuilder(DynamicCodeBuilder):
