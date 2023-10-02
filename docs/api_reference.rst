@@ -5,8 +5,12 @@
 API Reference
 =============
 
-.. autoclass:: python_dynamic_code.DynamicCodeBuilder
-    :members:
+.. py:attribute:: python_dynamic_code.main._P
+   :type: TypeVar
+   :value: ParamSpec('_P')
 
-.. autoclass:: python_dynamic_code.DynamicCodeRunner
+This is the type used in DynamicBuilder
+
+.. automodule:: python_dynamic_code
     :members:
+    :show-inheritance:

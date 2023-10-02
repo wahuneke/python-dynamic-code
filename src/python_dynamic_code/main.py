@@ -1,98 +1,339 @@
+import abc
+import ast
 import inspect
-from functools import cached_property
-from types import FunctionType
-from typing import Collection
-from typing import Iterator
+import sys
+from functools import partial
+from typing import Any
+from typing import Callable
+from typing import ClassVar
+from typing import Concatenate
+from typing import Generic
+from typing import Iterable
+from typing import Mapping
 from typing import Optional
-from typing import Sequence
+from typing import TYPE_CHECKING
 from typing import Tuple
+from typing import Type
+from typing import TypeVar
+from typing import Union
+from typing import overload
+
+from python_dynamic_code.parse import unparse
+from python_dynamic_code.conversion_code import get_conversion_code_tree
+from python_dynamic_code.runner import PdcStream
+
+if TYPE_CHECKING:
+    from typing import ParamSpec
+else:
+    ParamSpec = TypeVar
+
+__all__ = [
+    "simple_automatic_recalculation_cmp",
+    "simple_automatic_recalculation_hash",
+    "DynamicCodeBuilder",
+    "DynamicCodeRunner",
+    "UnboundDynamicCodeRunner",
+]
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R", covariant=True)
+_T = TypeVar("_T")
 
 
-class PdcDirective:
-    """A string directive parsed directly from source.  May apply to multiple lines"""
+_ExecParamsType = Tuple[Tuple[Any, ...], Mapping[str, Any]]
+"""When the full set of call arguments is to be passed to a call, it will be passed in this form"""
 
-    start: int
-    # The first line of this directive
-    end: int
-    # The last line (usually equal to start except for multi-line directives)
-    directive: str
-    # The directive (e.g. 'start', 'end', 'killif', etc)
-    instruction_input: str
-    # Everything read _after_ the directive name (possibly empty string)
+_runner_counter = 0
+"""
+A global that is used to keep track of the number of instances of dynamic code runner so that unique function names
+can be generated to live in the global namespace.
+"""
 
-    @classmethod
-    def parse_from(cls, iter: Iterator[Tuple[int, str]]) -> Tuple[Optional["PdcDirective"], Tuple[int, str]]:
-        """
-        Parse directive from the given line(s) and advance the iterator as needed.  Return the first
-        line that was _not_ parsed as a directive
-        """
-        next(iter)
-        return None, (1, "")
+_ConversionFunction = Callable[_P, Iterable[str]]
+"""
+A conversion function is a callable taking a parameter set and returning an iterable of strings which (when joined with
+`CR`) form a complete Python definition for the exec function
+"""
 
 
-class PdcAttachment:
-    """
-    Instructions that get attached to a PDC Section and control its behavior within PDC
-      e.g:
-        * hide this section
-        * do a find and replace
-        * evaluate something and then hide based on a condition
-    """
+class PdcConversionError(Exception):
+    def __init__(self, filename, func_object, conv_args: Optional[Tuple] = None, conv_kwargs: Optional[Mapping] = None):
+        self.filename = filename
+        self.func_object = func_object
+        self.conv_args = conv_args
+        self.conv_kwargs = conv_kwargs
+
+    def __str__(self):
+        return f"{self.filename}{inspect.getsource(self.func_object)}\n{self.conv_args}\n{self.conv_kwargs}"
 
 
-class PdcSection:
-    """
-    A set of source lines which may have subsections and also has section attachments, such as instructions about
-    how to process the given section, what code to rewrite, what lines to drop, etc
-    """
-
-    offset: int  # e.g. 0 if this section starts at first line of its parent section
-    tab_offset: int  # e.g. 4, the number of positions to the right these lines are shifted from the parent block
-    parent: Optional["PdcSection"]
-    sub_sections: Collection["PdcSection"]
-    attachments: Collection[PdcAttachment]
-    source_lines: Sequence[str]
-    source_start: int
-    source_end: int
-
-
-class PdcStream:
-    """
-    Take a stream of Python code which may have 'PDC' annotations in it.  Process the annotations and produce the
-    new code that results
-    """
-
-    source_lines: Sequence[str]
-
-    @cached_property
-    def sections(self) -> Sequence[PdcSection]:
-        for line_no, line in enumerate(self.source_lines):
-            if line.lstrip("").startswith("# PDC"):
-                print("hi")
-        return []
-
-
-class DynamicCodeBuilder:
-    """
-    This class must be customized and missing values defined in order to define a section of code which PDC will
-    optimize
-    """
-
-    source_function: FunctionType
-
-    def compile(self, **kwargs) -> "DynamicCodeRunner":
-        lines, lineno = inspect.getsourcelines(self.source_function)
-        code = "".join(lines)
-        return DynamicCodeRunner(code)
-
-
-class DynamicCodeRunner:
+class DynamicCodeRunner(Generic[_P, _R]):
     """This class manages the automatic generation and re-generation of the code replacement."""
 
-    code: str
+    builder: "DynamicCodeBuilder"
+    code: Callable[_P, _R]
+    conversion_code_ast: Optional[ast.Module]
+    exec_code_str: Optional[str]
+    automatic_cache: Optional[Union[int, _ExecParamsType]]
+    runner_number: int
+    exec_block: Optional[Callable[_P, _R]]
+    conversion_function: _ConversionFunction[_P]
 
-    def __init__(self, code: str) -> None:
-        self.code = code
+    def __init__(self, builder: "DynamicCodeBuilder", attached_func: Callable[_P, _R]) -> None:
+        global _runner_counter
+        _runner_counter += 1
+        self.runner_number = _runner_counter
+        self.exec_block = None
+        self.automatic_cache = None
+        self.builder = builder
+        self.code = attached_func
+        attached_func_name = getattr(attached_func, "__name__", "__pdc_unnammed_func")
+        self.pdc_stream = PdcStream(attached_func_name, attached_func)
+        self.builder.setup_conversion_func(self)
 
-    def run_it(*args, **kwargs):
-        pass
+    def __call__(self, *args: "_P.args", **kwargs: "_P.kwargs") -> _R:
+        if self.builder.automatic_recalculation_hash_func is not None:
+            return self._call_hash_mode(*args, **kwargs)
+        elif self.builder.automatic_recalculation_cmp_func is not None:
+            return self._call_comp_mode(*args, **kwargs)
+        else:
+            return self._call_manual_mode(*args, **kwargs)
+
+    def _call_manual_mode(self, *args: "_P.args", **kwargs: "_P.kwargs") -> _R:
+        """
+        See docs. In manual mode, a refresh is only done if the `reset` or `refresh` methods are called explicitly
+        """
+        if not self.exec_block:
+            self.refresh(*args, **kwargs)
+
+        return self.exec_block(*args, **kwargs)
+
+    def _call_hash_mode(self, *args: "_P.args", **kwargs: "_P.kwargs") -> _R:
+        """In automatic (hash) mode, we calculate a hash of inputs and re-calculate exec block if changed"""
+        call_hash = self.builder.automatic_recalculation_hash_func((args, kwargs))
+        if self.automatic_cache != call_hash or self.exec_block is None:
+            self.refresh(*args, **kwargs)
+            self.automatic_cache = call_hash
+
+        return self.exec_block(*args, **kwargs)
+
+    def _call_comp_mode(self, *args: "_P.args", **kwargs: "_P.kwargs") -> _R:
+        """
+        In automatic (comparison) mode, we run a full comparison of passed arguments to decide whether to
+        re-calculate the exec block.
+        """
+        if (
+            self.automatic_cache is None
+            or self.exec_block is None
+            or self.builder.automatic_recalculation_cmp_func((args, kwargs), self.automatic_cache)
+        ):
+            self.refresh(*args, **kwargs)
+            self.automatic_cache = (args, kwargs)
+
+        return self.exec_block(*args, **kwargs)
+
+    def reset(self) -> None:
+        """
+        Calling this causes any cached exec block (from previous runs of the fast path) to be removed.  As a result, a
+        new exec block will be created the next time the fast path function is called.
+
+        See also `refresh()`, which can be used to update exec code before the fast path runs.
+        """
+        if self.exec_block:
+            # recover resources so that this module does not grow infinitely with all the exec blocks
+            self.pdc_stream.remove_function(self.exec_block)
+        self.exec_block = None
+
+    @property
+    def conversion_func_ast(self) -> ast.Module:
+        """
+        After original source is parsed and directives are applied, this will be the result. This will be compiled and
+        attached to the source module as the new conversion function to be run whenever new exec code is needed.
+
+        This function definition is ready to be grafted into the target namespace (into the module or int global,
+        if no module).
+
+        This function definition does not yet have its final function name. Still needs to be renamed to a new,
+        available name. This is done at last step by the `add_new_function()` method.
+        """
+        return get_conversion_code_tree(self.pdc_stream)
+
+    def conversion_func_definition(self) -> str:
+        """
+        This is the string representation of the conversion function definition.  It is generated by unparsing the
+        AST in `conversion_func_ast`. It requires python 3.9 or later (it is intended only for debugging and testing).
+        """
+        if sys.version_info < (3, 9):
+            raise NotImplementedError("This method requires Python 3.9 or later")
+
+        return ("# The following is the code that will be executed whenever there is a refresh (in order to generate \n"
+                "# new 'exec code').\n"
+                "# NOTE: the function name here is not the one that will be used to represent this code internally\n"
+                "#   ie, it is for example purposes.  All other code is a true copy." +
+                unparse(self.conversion_func_ast))
+
+    def refresh(self, *args: "_P.args", **kwargs: "_P.kwargs") -> None:
+        """
+        Similar to running the `reset()` method, but this function also *executes* the conversion function, using
+        the provided conversion args and kwargs, and produces an `exec_block` that is ready to run in the fast path.
+
+        As an alternative, the `reset()` method can be called instead - in which case an exec_block will be
+        automatically generated the next time the fast path function is run.
+        """
+        self.builder.refresh(self, *args, **kwargs)
+
+
+class UnboundDynamicCodeRunner(DynamicCodeRunner[_P, _R], Generic[_T, _P, _R]):
+    """
+    When used as a method, but not yet bound to an instance or type, the function will appear to be an instance
+    of this subclass.  Functionally identical to the `DynamicCodeRunner`, present only for accurate typing.
+    """
+
+    owner_class: Optional[object]
+
+    def __init__(self, builder: "DynamicCodeBuilder", attached_func: "Callable[Concatenate[_T, _P], _R]") -> None:
+        super().__init__(builder, attached_func)
+        self.owner_class = None
+
+    def __set_name__(self, owner: object, name: str) -> None:
+        assert self.owner_class is None, "This decorator should only be used once"
+        self.owner_class = owner
+
+    @overload
+    def __get__(self, instance: None, owner: type) -> "UnboundDynamicCodeRunner[_T, _P, _R]":
+        ...
+
+    @overload
+    def __get__(self, instance: object, owner: Optional[type]) -> "DynamicCodeRunner[_P, _R]":
+        ...
+
+    def __get__(
+        self, instance: Optional[object], owner: Optional[type]
+    ) -> Union["UnboundDynamicCodeRunner[_T, _P, _R]", "DynamicCodeRunner[_P, _R]",]:
+        if instance is None:
+            assert owner is not None
+            return self
+        else:
+            return DynamicCodeRunner(self.builder, partial(self.code, instance))
+
+    if TYPE_CHECKING:
+        def __call__(self, t_var: _T, *args: _P.args, **kwargs: _P.kwargs) -> _R:
+            ...
+
+
+class DynamicCodeBuilder(abc.ABC):
+    """
+     This class should be subclassed, and then can be attached to fast-path code as a function/method decorator. For
+     example:
+
+     >>> class MyCodeBuilder(DynamicCodeBuilder):
+     >>>    def template_handler(self, section_name: str, template_matched: str, local_namespace: dict) -> str:
+     >>>        ...
+     >>>
+     >>> @MyCodeBuilder()
+     >>> def my_fast_path_function(arg1, arg2):
+     >>>     ...
+     >>>     # PDC-Start section 1
+     >>>     ...
+
+     In the above example, the `my_fast_path_function` will be replaced with a new function that will be an instance of
+     `DynamicCodeRunner`. The `DynamicCodeRunner` will in turn take care of deciding when to run 'conversion code' and
+     when to execute 'exec code'.
+
+     In implementin the builder subclass, a decision should be made about whether to use *manual* or *automatic*
+     regeneration of exec code.
+
+     **Manual Conversion**
+
+    `Conversion code` will be turned into exec code the first time the fastpath is called. After which, the same `exec
+     code` will always run.  Regeneration of exec code can be manually triggered at any time, by invoking `refresh()` on
+     the runner and providing the appropriate, new slow parameter values.
+
+     **Automatic Conversion**
+
+     The decision to recreate the exec code can also be made 'automatically' every time the fast path is executed. To do
+     this, the builder must have defined either a _hash_ function or a _comparison_ function which can be called, with
+     fast path exec params to determine whether the 'slow' portion of the exec params has been changed since the last
+     run (causing it to be necessary to re-run conversion code).
+
+     Using 'automatic conversion' may result in a significantly slower fast path function in comparison with 'manual'
+     mode, because every fast path run will be preceeded by a check of the hash or the comparison function.
+    """
+
+    automatic_recalculation_hash_func: ClassVar[Optional[Callable[[_ExecParamsType], int]]] = None
+    """
+    A hash function can be defined which which will be given the full set of exec params (on every
+    call to the fast path) and which will return a hash of the `slow params`.  When this hash changes, the runner will
+    interpret this as meaning that a new `exec block` must be computed.
+    """
+
+    automatic_recalculation_cmp_func: ClassVar[Optional[Callable[[_ExecParamsType, _ExecParamsType], bool]]] = None
+    """
+    A comparison function can be defined which will be given the full set of exec params (on every
+    call to the fast path) along with a copy of the most recent set of exec params when the params changed.
+    The function should return True if slow param values have changed (meaning the exec code should be regenerated).
+    """
+
+    unbound_runner_class: ClassVar[Type[DynamicCodeRunner]] = UnboundDynamicCodeRunner  # type: ignore
+    """This can be set to a subclass of `UnboundDynamicCodeRunner` to change the behavior of the decorator."""
+
+    runner_class: ClassVar[Type[DynamicCodeRunner]] = DynamicCodeRunner  # type: ignore
+    """This can be set to a subclass of `DynamicCodeRunner` to change the behavior of the decorator."""
+
+    def __call__(self, fn: "Callable[Concatenate[_T, _P], _R]") -> UnboundDynamicCodeRunner[_T, _P, _R]:
+        if isinstance(fn, staticmethod):
+            return self.runner_class(self, fn)
+        else:
+            return self.unbound_runner_class(self, fn)
+
+    @abc.abstractmethod
+    def template_handler(self, section_name: str, template_matched: str, local_namespace: Mapping[str, Any]) -> str:
+        ...
+
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        if cls.automatic_recalculation_hash_func is not None and cls.automatic_recalculation_cmp_func is not None:
+            raise TypeError(
+                f"Class '{cls}' defined with values for both types of automatic recalculation. Set only "
+                f"one of these values."
+            )
+
+    def refresh(self, runner: DynamicCodeRunner, *args: "_P.args", **kwargs: "_P.kwargs") -> None:
+        """
+        Similar to running the `reset()` method, but this function also *executes* the conversion function, using
+        the provided conversion args and kwargs, and produces an `exec_block` that is ready to run in the fast path.
+
+        As an alternative, the `reset()` method can be called instead - in which case an exec_block will be
+        automatically generated the next time the fast path function is run.
+        """
+        if runner.exec_block:
+            # There was already an exec block.  Delete it (to recover resources)
+            runner.reset()
+        runner.exec_code_str = "\n".join(runner.conversion_function(*args, **kwargs))
+        runner.exec_block = runner.pdc_stream.add_new_function(runner.exec_code_str)
+
+    def setup_conversion_func(self, runner: DynamicCodeRunner) -> None:
+        runner.conversion_code_ast = get_conversion_code_tree(runner.pdc_stream)
+        runner.conversion_function = runner.pdc_stream.add_new_function(runner.conversion_code_ast)
+
+
+def simple_automatic_recalculation_hash(run_params: Tuple[Tuple[Any, ...], Mapping[str, Any]]) -> int:
+    """
+    A simple implementation of a recalculation hash.  Normally, the hash would be performed only on *some* of the
+    parameter values (the "slow args").  This, sample function, computes a hash over *all* the parameters.
+    """
+    args, kwargs = run_params
+    return hash((args, tuple(kwargs.items())))
+
+
+def simple_automatic_recalculation_cmp(
+    args_1: Tuple[Tuple[Any, ...], Mapping[str, Any]], args_2: Tuple[Tuple[Any, ...], Mapping[str, Any]]
+) -> bool:
+    """
+    A simple implementation to check whether function arguments have changed enough to justify a recalculation of
+    fast path exec block.  Normally, the comparison would be performed over only *some* of the parameters (only the
+    "slow args").
+
+    Returns True if *any* args have changed (ie for non-equality)
+    """
+    return args_1 != args_2

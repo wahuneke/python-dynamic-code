@@ -63,3 +63,6 @@ target/
 .idea
 
 src/python_dynamic_code/_version.py
+
+tests/.benchmarks
+.hypothesis

@@ -1,19 +1,22 @@
 ``Python Dynamic Code``
 ==============================
-**Accelerate your fast path, at runtime**
+
+**Runtime, fast path, optimizations**
 
 ############
 What is it?
 ############
 
-``Python Dynamic Code (PDC)`` can be used to accelerate a key section of code ("fastpath")
-in cases where standard Python optimization methods cannot be applied.
+**NOTICE**: this project is experimental - its use in production projects should be very carefully considered
 
+``Python Dynamic Code (PDC)`` can be used to accelerate a key section of code ("fastpath")
+in cases where standard Python optimization methods cannot be applied or might introduce too much
+complexity.
 
 ****************************
 What programs might benefit?
 ****************************
-The ``PDC`` system is well suited for complex applications that have a small
+The ``PDC`` system is well suited for complex applications that have a small, isolated
 block of code that is its *fastpath*. And, if the fastpath changes its shape
 depending on some runtime input, it may be well suited for runtime, dynamic
 optimization.
@@ -38,19 +41,44 @@ What types of optimizations?
 ****************************
 After program startup, after configuration or user selections, just before running the program's *main loop*:
 
-* If your fastpath code has an inner loop that iterates over some short list of items provided
-  by the user at runtime, we can **unroll** that loop. Unrolling a loop may make your code
-  run faster because it eliminates comparisons and jumps.
 * Your fastpath code looks up the same keys or attributes in some dynamic (runtime / user
   populated) mapping over and over again, even though the values never or almost never
   change?  ``PDC`` might be able to help you by rewriting your program so that the values
-  appear in the code as constants, **precalculated**.
-* Does the fastpath include large blocks of code that become dormant depending on runtime
-  settings?  Those blocks can be **dropped** completely out of the program, eliminating
-  comparisons and jumps in addition to making the final block of code smaller.
+  appear in the code as constants, **precalculated**. Eliminating multiple *dictionary* lookups
+  for every run of the fast path may lead to significant speed ups.
 
+Minor optimizations:
+
+* Does the fastpath include large blocks of code that become dormant depending on runtime
+  settings?  Those blocks can be **dropped** completely out of the program, eliminating unnecessary
+  comparisons and jumps in addition to making the final block of code smaller (theoretically, improving *locality of
+  reference*).
+* If your fastpath code has an inner loop that iterates over some short list of items provided
+  by the user at runtime, we can **unroll** that loop. Unrolling a loop may make your code
+  run faster because it eliminates comparisons and jumps.  In turn, this will (theoretically) improve instruction
+  prefetch.  Coincidentally, this also undoes the above benefit, making your code *bigger* :)
+
+What are the risks?
+*******************
+This is a brand new project, originating mostly out of personal curiosity. If other people make use of it and submit
+issues, this section may be updated.  For now, just off the top of my head:
+
+* This library ultimately utilizes `python exec` in order to do what it does. This function introduces behavior that
+  does not arise very often in typical Python projects
+
+  - Depending on how ``PDC`` is being used, there is potential for the introduction of **arbitrary code execution**
+    security vulnerabilities
+  - By its nature, this library builds and runs brand new Python code. Consequently, errors either on the part of the
+    library user or its author(s) could (theoretically) lead to unexpected execution of commands leading to data loss,
+    or other 'high impact' outcomes
+
+* This library is **experimental** and brand new (as of October 2023). As such, its code is not 'field tested' and does
+  not have the benefit of multiple project users uncovering defects
+
+
+##################
 How do you use it?
-******************
+##################
 Your existing fast path code remains unchanged. The ``PDC`` tool changes your existing code
 via code annotations that are added to the code as comments.  After this, a decision must be
 made about **when** in the program flow the optimization will happen (and also, when re-optimization should be
@@ -67,6 +95,17 @@ is executed in place of the original fastpath code, whenever it is needed in nor
 flow.  If, during program flow, a configuration changes significantly enough that the fastpath
 should be recalculated, ``PDC`` takes care of re-applying the original analysis, recompiling
 the generated Python, and a newly-optimized fastpath is ready to be used again.
+
+For each DynamicCodeBuilder attached to a function or instance, the following three steps
+will occur, at different times:
+#. **At start time** (ie, when Python first loads your module) - the source code (with PDC 'annotations') is read and
+parsed.  A block of 'conversion code' is generated
+#. At fast path runtime **if slow params have changed** - the conversion code is executed. In combination with the
+values found in the 'slow params', the conversion code generates a block of 'exec code'.
+#. At fast path runtime **every time** - the exec code is executed.
+Remember: the 'exec code' in this case is the optimized fast path code.  It was created by running the
+'conversion code' and represents the streamlined version of the original fast path code.  It
+will be _optimized_ for the current values of the 'slow params'.
 
 Important features
 ******************
@@ -114,6 +153,11 @@ compilation
     In this context, 'compilation' is the program step, during runtime, when the original source
     code, written by the programmer, is converted into new Python code using information accumulated
     during runtime.
+
+slow params
+    This is shorthand for the set portion of the parameters to the fast path function which are
+    not expected to change very frequently.  These parameters are (optionally) monitored for change
+    and when they do change, the fast path (`exec code`) code is recompiled.
 
 code annotations
     In this context, 'code annotations' are instructions that are added into existing, working, Python
@@ -185,6 +229,11 @@ Public API
 **********
 Please see the :doc:`api_reference`.
 
+Further reading
+***************
+
+* codegen-article_ - an article about accelerating Python code using code generation (i.e. the purpose of this package)
+
 Development
 ***********
 
@@ -210,6 +259,7 @@ Table of contents
 
     api_reference
     changelog
+    todo
 
 
 
@@ -220,7 +270,10 @@ Table of contents
     https://github.com/wahuneke/python-dynamic-code/blob/main/tox.ini
 .. _pre-commit:
     https://pre-commit.com/
-
+.. _codegen-article:
+    https://medium.com/@yonatanzunger/advanced-python-achieving-high-performance-with-code-generation-796b177ec79
+.. _python exec:
+    https://docs.python.org/3/library/functions.html#exec
 
 .. Indices and tables
 .. ==================

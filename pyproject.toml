@@ -5,31 +5,50 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "python-dynamic-code"
+version = "0.0.1"
+
 [project.urls]
 "Homepage" = "https://github.com/wahuneke/python-dynamic-code"
 "Bug Tracker" = "https://github.com/wahuneke/python-dynamic-code/issues"
 "Documentation" = "https://python-dynamic-code.readthedocs.io/en/latest/"
 
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-p pytester --mypy"
+testpaths = ["tests"]
+norecursedirs = [".tox", ".benchmarks", ".mypy_cache", ".hypothesis"]
+xfail_strict = "True"
+pytester_example_dir = "docs/sample-projects"
+
 [tool.setuptools_scm]
 write_to = "src/python_dynamic_code/_version.py"
 
+[tool.black]
+line-length = 120
+target-version = ["py39"]
+
+
 [tool.mypy]
 mypy_path = "src"
-check_untyped_defs = true
-disallow_any_expr = true
-disallow_any_generics = true
-disallow_any_unimported = true
-disallow_subclassing_any = true
-disallow_untyped_calls = true
-disallow_untyped_decorators = true
-ignore_missing_imports = true
-implicit_reexport = false
-no_implicit_optional = true
-show_error_codes = true
-strict_equality = true
-strict_optional = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_configs = true
-warn_unused_ignores = true
+strict = true
+python_version = "3.11"
+#check_untyped_defs = true
+#disallow_any_expr = true
+##disallow_any_generics = true
+#disallow_any_unimported = true
+#disallow_subclassing_any = true
+#disallow_untyped_calls = true
+#disallow_untyped_decorators = true
+##ignore_missing_imports = true
+implicit_reexport = true
+#no_implicit_optional = true
+#show_error_codes = true
+#strict_equality = true
+#strict_optional = true
+#warn_redundant_casts = true
+#warn_return_any = true
+#warn_unreachable = true
+#warn_unused_configs = true
+#warn_unused_ignores = true

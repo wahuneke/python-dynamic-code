@@ -1,5 +1,5 @@
 ===========================================================
-python-dynamic-code - Accelerate your fast path, at runtime
+python-dynamic-code - Runtime, fast path, optimizations
 ===========================================================
 
 |pypi| |versions| |github-actions| |black| |codecov|
