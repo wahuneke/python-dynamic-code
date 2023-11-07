@@ -3,14 +3,14 @@ from textwrap import dedent
 
 import pytest
 
+from python_dynamic_code.parse.ast_util import AstCommentV2
+from python_dynamic_code.parse.ast_util import unparse
 from python_dynamic_code.parse.directives import FunctionStartDirective
 from python_dynamic_code.parse.directives import StartDirective
 from python_dynamic_code.parse.directives import VerbatimDirective
-from python_dynamic_code.parse.ast_util import AstCommentV2
 from python_dynamic_code.parse.pdc_nodes import parse
 from python_dynamic_code.parse.pdc_nodes import PdcGroup
 from python_dynamic_code.parse.pdc_nodes import PdcNode
-from python_dynamic_code.parse.pdc_nodes import unparse
 
 
 def test_find_pdc_nodes():

@@ -1,13 +1,18 @@
 import ast
 import sys
-from _ast import FunctionDef, Module
+from _ast import FunctionDef
+from _ast import Module
 from copy import copy
-from typing import Mapping, Any, Self, Optional, Union
+from typing import Any
+from typing import Mapping
+from typing import Optional
+from typing import Union
 
 import ast_comments
+from typing_extensions import Self
 
 
-def parse(source: Union[str, bytes, ast.AST], filename: str='<unknown>', mode: str='exec') -> ast.AST:
+def parse(source: Union[str, bytes, ast.AST], filename: str = "<unknown>", mode: str = "exec") -> ast.AST:
     """
     Replace the ast.parse method with one which picks up comments.
     """
@@ -18,6 +23,11 @@ if sys.version_info >= (3, 9):
 
     def unparse(ast_obj: ast.AST) -> str:
         return AstCommentV2.Unparser().visit(ast_obj)
+
+else:
+
+    def unparse(ast_obj: ast.AST) -> str:
+        raise NotImplementedError("unparse() is not supported on Python < 3.9")
 
 
 def ast_rename_function(tree: ast.Module, new_function_name: str) -> ast.Module:
@@ -69,7 +79,6 @@ class AstCommentV2(ast.Expr):
         class Unparser(ast_comments._Unparser):
             def visit_AstCommentV2(self, node: ast.AST) -> ast.AST:
                 return self.visit_Expr(node)
-
 
     @property
     def comment(self) -> str:

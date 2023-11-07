@@ -10,8 +10,8 @@ During troubleshooting, this tree can be inspected using `ast.dump()` or written
 When written as code, annotations will appear as string literals in the output and will reveal the internal
 representation of how the original, annotated code was parsed.
 """
-
-from .pdc_nodes import parse, unparse, PdcNodeBase
+from .ast_util import unparse
 from .parser import PdcSection
+from .pdc_nodes import parse
 
 __all__ = ["parse", "unparse", "PdcSection"]

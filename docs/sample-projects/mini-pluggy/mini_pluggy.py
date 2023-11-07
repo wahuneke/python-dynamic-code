@@ -5,6 +5,7 @@ in here, so we can see how it would work.
 from typing import Callable
 from typing import cast
 from typing import Generator
+from typing import List
 from typing import Mapping
 from typing import NoReturn
 from typing import Sequence
@@ -30,7 +31,7 @@ def _multicall(
     hook_impls: Sequence[HookImpl],
     caller_kwargs: Mapping[str, object],
     firstresult: bool,
-) -> object | list[object]:
+) -> object | List[object]:
     # PDC-Function
     #   GenDrop: caller_kwargs
     # PDC-Start Section 1

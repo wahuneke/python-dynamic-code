@@ -3,8 +3,8 @@ from textwrap import dedent
 
 import pytest
 
-from python_dynamic_code.parse import unparse
 from python_dynamic_code.conversion_code.conversion import get_conversion_code_tree
+from python_dynamic_code.parse import unparse
 from python_dynamic_code.runner import PdcStream
 
 

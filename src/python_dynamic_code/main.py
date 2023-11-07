@@ -6,26 +6,23 @@ from functools import partial
 from typing import Any
 from typing import Callable
 from typing import ClassVar
-from typing import Concatenate
 from typing import Generic
 from typing import Iterable
 from typing import Mapping
 from typing import Optional
-from typing import TYPE_CHECKING
+from typing import overload
 from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
-from typing import overload
 
-from python_dynamic_code.parse import unparse
+from typing_extensions import Concatenate
+from typing_extensions import ParamSpec
+
 from python_dynamic_code.conversion_code import get_conversion_code_tree
+from python_dynamic_code.parse import unparse
 from python_dynamic_code.runner import PdcStream
-
-if TYPE_CHECKING:
-    from typing import ParamSpec
-else:
-    ParamSpec = TypeVar
 
 __all__ = [
     "simple_automatic_recalculation_cmp",
@@ -166,11 +163,12 @@ class DynamicCodeRunner(Generic[_P, _R]):
         if sys.version_info < (3, 9):
             raise NotImplementedError("This method requires Python 3.9 or later")
 
-        return ("# The following is the code that will be executed whenever there is a refresh (in order to generate \n"
-                "# new 'exec code').\n"
-                "# NOTE: the function name here is not the one that will be used to represent this code internally\n"
-                "#   ie, it is for example purposes.  All other code is a true copy." +
-                unparse(self.conversion_func_ast))
+        return (
+            "# The following is the code that will be executed whenever there is a refresh (in order to generate \n"
+            "# new 'exec code').\n"
+            "# NOTE: the function name here is not the one that will be used to represent this code internally\n"
+            "#   ie, it is for example purposes.  All other code is a true copy." + unparse(self.conversion_func_ast)
+        )
 
     def refresh(self, *args: "_P.args", **kwargs: "_P.kwargs") -> None:
         """
@@ -217,6 +215,7 @@ class UnboundDynamicCodeRunner(DynamicCodeRunner[_P, _R], Generic[_T, _P, _R]):
             return DynamicCodeRunner(self.builder, partial(self.code, instance))
 
     if TYPE_CHECKING:
+
         def __call__(self, t_var: _T, *args: _P.args, **kwargs: _P.kwargs) -> _R:
             ...
 

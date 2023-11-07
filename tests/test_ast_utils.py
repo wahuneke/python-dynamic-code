@@ -3,8 +3,9 @@ import ast
 from textwrap import dedent
 from typing import Optional
 
-from python_dynamic_code.parse import parse, ast_util
-from python_dynamic_code.parse.ast_util import NodeMerger, AstCommentV2
+from python_dynamic_code.parse import ast_util
+from python_dynamic_code.parse.ast_util import AstCommentV2
+from python_dynamic_code.parse.ast_util import NodeMerger
 
 
 def test_node_merger() -> None:
@@ -54,7 +55,7 @@ def test_node_merger() -> None:
           @deco
           class Werd(OtherClass):
             pass
-          
+
         y = 3 + 4
         another_statement()
         """

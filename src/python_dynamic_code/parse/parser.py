@@ -2,7 +2,8 @@ import ast
 from _ast import AST
 from ast import NodeVisitor
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
+from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
@@ -89,5 +90,3 @@ class PdcSection:
             visitor.attachments,
             visitor.statement_attachments,
         )
-
-

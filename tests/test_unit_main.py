@@ -1,4 +1,5 @@
 """Use mocks to do unit testing on the main classes (the Builder and the Runner)"""
+import sys
 from typing import Any
 from typing import ClassVar
 from typing import Mapping
@@ -7,9 +8,9 @@ from typing import Tuple
 import pytest
 
 from python_dynamic_code import DynamicCodeBuilder
-from python_dynamic_code import UnboundDynamicCodeRunner
 from python_dynamic_code import simple_automatic_recalculation_cmp
 from python_dynamic_code import simple_automatic_recalculation_hash
+from python_dynamic_code import UnboundDynamicCodeRunner
 from python_dynamic_code.parse import parse
 
 
@@ -22,8 +23,14 @@ class MySimpleBuilder(DynamicCodeBuilder):
         raise NotImplementedError("This should not be called in theses tests")
 
 
+if sys.version_info < (3, 9):
+    RunnerTestType = UnboundDynamicCodeRunner
+else:
+    RunnerTestType = UnboundDynamicCodeRunner[int, [int], Tuple]
+
+
 @pytest.fixture
-def simple_func_demo(mocker) -> UnboundDynamicCodeRunner[int, [int], Tuple]:
+def simple_func_demo(mocker) -> RunnerTestType:
     """
     Create a code runner based on a simple conversion script that changes code between returning (x,y) and returning
     (y,y) depending on the value of x.  In this case, 'x' is an example of a "slow param" meaning it changes
@@ -31,7 +38,9 @@ def simple_func_demo(mocker) -> UnboundDynamicCodeRunner[int, [int], Tuple]:
     """
     mocker.patch(
         "python_dynamic_code.main.get_conversion_code_tree",
-        return_value=parse("def my_func(x,y):\n\tyield 'def my_func(x,y):'\n\tyield '\treturn x,y' if x < 5 else '\treturn -1*x, -1*y'\n"),
+        return_value=parse(
+            "def my_func(x,y):\n\tyield 'def my_func(x,y):'\n\tyield '\treturn x,y' if x < 5 else '\treturn -1*x, -1*y'\n"
+        ),
     )
 
     @MySimpleBuilder()
@@ -44,13 +53,15 @@ def simple_func_demo(mocker) -> UnboundDynamicCodeRunner[int, [int], Tuple]:
 
 
 @pytest.fixture(params=["comparison", "hash"])
-def auto_builder_func_demo(mocker, request) -> UnboundDynamicCodeRunner[int, [int], Tuple]:
+def auto_builder_func_demo(mocker, request) -> RunnerTestType:
     """
     Create a simple builder but setup with different automatic comparison modes
     """
     mocker.patch(
         "python_dynamic_code.main.get_conversion_code_tree",
-        return_value=parse("def my_func(x,y):\n\tyield 'def my_func(x,y):'\n\tyield '\treturn x,y' if x < 5 else '\treturn -1*x, -1*y'\n"),
+        return_value=parse(
+            "def my_func(x,y):\n\tyield 'def my_func(x,y):'\n\tyield '\treturn x,y' if x < 5 else '\treturn -1*x, -1*y'\n"
+        ),
     )
 
     class MySimpleBuilderAuto(DynamicCodeBuilder):
@@ -77,10 +88,7 @@ def auto_builder_func_demo(mocker, request) -> UnboundDynamicCodeRunner[int, [in
     return my_func
 
 
-DemoType = UnboundDynamicCodeRunner[int, [int], Tuple]
-
-
-def test_simple(simple_func_demo: DemoType) -> None:
+def test_simple(simple_func_demo: RunnerTestType) -> None:
     """Simple scenario demonstrating basic usage"""
 
     assert simple_func_demo.exec_block is None, "This will be null at first"
@@ -94,7 +102,7 @@ def test_simple(simple_func_demo: DemoType) -> None:
     assert simple_func_demo.exec_block is not None, "We have an exec again because we got some args"
 
 
-def test_simple_branching(simple_func_demo: DemoType) -> None:
+def test_simple_branching(simple_func_demo: RunnerTestType) -> None:
     """Simple scenario demonstrating code which adapts depending on the value of param x"""
 
     assert simple_func_demo.exec_block is None, "This will be null at first"
@@ -112,7 +120,7 @@ def test_simple_branching(simple_func_demo: DemoType) -> None:
     assert simple_func_demo(5, 2) == (5, 2), "Back to the old algorithm"
 
 
-def test_manual_refresh(simple_func_demo: DemoType) -> None:
+def test_manual_refresh(simple_func_demo: RunnerTestType) -> None:
     """
     A test with same basic structure, but different emphasis.  Make sure manual refresh works as expected (goes with
     other test: test_auto_refresh)
@@ -128,7 +136,7 @@ def test_manual_refresh(simple_func_demo: DemoType) -> None:
     assert simple_func_demo(1, 2) == (-1, -2), "But now the old function call returns new answer (new code)."
 
 
-def test_auto_refresh(auto_builder_func_demo: DemoType) -> None:
+def test_auto_refresh(auto_builder_func_demo: RunnerTestType) -> None:
     """
     A test with same basic structure, but different emphasis.  Make sure automatic refresh works as expected (goes with
     other tests: test_manual_refresh)

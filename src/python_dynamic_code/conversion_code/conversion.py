@@ -4,9 +4,9 @@ combination with slow-changing input, to produce exec code.
 """
 import ast
 
+from python_dynamic_code.conversion_code.writer import ConversionCodeWriter
 from python_dynamic_code.parse.parser import PdcSection
 from python_dynamic_code.runner import PdcStream
-from python_dynamic_code.conversion_code.writer import ConversionCodeWriter
 
 
 def get_conversion_code_tree(stream: "PdcStream") -> ast.Module:

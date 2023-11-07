@@ -1,18 +1,25 @@
 import ast
 import re
 from ast import NodeTransformer
-from dataclasses import dataclass
 from dataclasses import field
-from typing import List, Any, Union, Protocol, Type, Iterable, runtime_checkable, Self
+from typing import Any
+from typing import Iterable
+from typing import List
 from typing import MutableMapping
 from typing import Optional
+from typing import Protocol
+from typing import runtime_checkable
+from typing import Type
+from typing import Union
+
+from typing_extensions import Self
 
 
 __all__ = ["ConversionCodeWriter"]
 
 from python_dynamic_code.parse.pdc_nodes import PdcGroup, PdcNode
 
-_TemplateMapType = MutableMapping[re.Pattern[str], Optional[str]]
+_TemplateMapType = MutableMapping[re.Pattern, Optional[str]]
 
 
 @runtime_checkable
@@ -30,7 +37,9 @@ class RuleMakerProtocol(Protocol):
         ...
 
     # noinspection PyMethodMayBeStatic
-    def run_rule(self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]) -> Union[ast.AST, List[ast.AST]]:
+    def run_rule(
+        self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]
+    ) -> Union[ast.AST, List[ast.AST]]:
         """
         Apply this rule's operations on the current node (generally, don't apply to this node's children). Those will
         be visited later and run_rule will go again for those child nodes
@@ -70,7 +79,7 @@ class ConversionCodeWriter(NodeTransformer):
 
     full_source: str
     """
-    The full source code for the tree being converted. Line numbers and columns should line up with the code 
+    The full source code for the tree being converted. Line numbers and columns should line up with the code
     coordinates found in the nodes of the tree
     """
 
@@ -84,7 +93,7 @@ class ConversionCodeWriter(NodeTransformer):
     """
     whenever there's a change in the section stack, this set of rules is updated
     The rules here represent all the section attachment rules from all section in the stack, **with** priority
-    override being applied for newer sections.  SectionAttachments from more recent sections have the option to 
+    override being applied for newer sections.  SectionAttachments from more recent sections have the option to
     override or rewrite section rules from lower sections.
     """
 
@@ -95,10 +104,11 @@ class ConversionCodeWriter(NodeTransformer):
     to it
     """
 
-    def __init__(self,
-                 conversion_controller_name: str,
+    def __init__(
+        self,
+        conversion_controller_name: str,
         full_source: str,
-         rule_group_class: Type[RuleMakerGroupProtocol],
+        rule_group_class: Type[RuleMakerGroupProtocol],
     ) -> None:
         self.conversion_controller_name = conversion_controller_name
         self.full_source = full_source
@@ -113,10 +123,11 @@ class ConversionCodeWriter(NodeTransformer):
 
     def pop_section_rules(self) -> None:
         if self.current_line_directives:
-            raise ValueError("PDC Section ended with one or more line directives still in effect. Line directives "
-                             "be followed by a line (or block) of code. Error occured at line no: " + str(
-                self.current_line_directives[0].lineno
-            ))
+            raise ValueError(
+                "PDC Section ended with one or more line directives still in effect. Line directives "
+                "be followed by a line (or block) of code. Error occured at line no: "
+                + str(self.current_line_directives[0].lineno)
+            )
         self.section_stack.pop()
         self.build_current_section_attachments()
 
@@ -134,14 +145,14 @@ class ConversionCodeWriter(NodeTransformer):
     def visit(self, node: ast.AST) -> Union[ast.AST, List[Any]]:
         if isinstance(node, PdcGroup):
             if self.current_line_directives:
-                raise ValueError(f"PDC Section at line no {node.lineno} is preceded by line directives. Line "
-                                 f"directives must be followed by either more line directives or by Python code")
+                raise ValueError(
+                    f"PDC Section at line no {node.lineno} is preceded by line directives. Line "
+                    f"directives must be followed by either more line directives or by Python code"
+                )
 
             self.push_section_rules(self.rule_group_class.parse_from(node, parse_sub_sections=False))
             # Run visitor for all child nodes on node (but, key, not the group node itself)
-            result = list(filter(None,(
-                self.visit(c) for c in node.body)
-            ))
+            result = list(filter(None, (self.visit(c) for c in node.body)))
             self.pop_section_rules()
             return result
         elif isinstance(node, PdcNode):

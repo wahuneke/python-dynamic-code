@@ -6,15 +6,21 @@ In this module, the standard AST tech is extended to add:
     * ast_utils is used to bring in the AstCommentV2 node type for parsing comments from source code
 
 """
-
 import ast
 import sys
-from typing import Any, Type, runtime_checkable, Protocol, Generic, overload, Literal
+from typing import Any
+from typing import Generic
 from typing import List
+from typing import Literal
 from typing import Optional
-from typing import Self
+from typing import overload
+from typing import Protocol
+from typing import runtime_checkable
+from typing import Type
 from typing import TypeVar
 from typing import Union
+
+from typing_extensions import Self
 
 from python_dynamic_code.parse import ast_util
 
@@ -43,26 +49,34 @@ class PdcGroupControlDirective(Protocol):
 
 
 @overload
-def parse(source: Union[str, bytes, ast.AST], filename: str='<unknown>', mode: Literal['exec'] = 'exec',
-          directive_parent_class: Optional[Type[PdcDirectiveProtocol]] = None) -> ast.Module:
+def parse(
+    source: Union[str, bytes, ast.AST],
+    filename: str = "<unknown>",
+    mode: Literal["exec"] = "exec",
+    directive_parent_class: Optional[Type[PdcDirectiveProtocol]] = None,
+) -> ast.Module:
     ...
 
 
-def parse(source: Union[str, bytes, ast.AST], filename: str='<unknown>', mode: str='exec',
-          directive_parent_class: Optional[Type[PdcDirectiveProtocol]] = None) -> ast.AST:
+def parse(
+    source: Union[str, bytes, ast.AST],
+    filename: str = "<unknown>",
+    mode: str = "exec",
+    directive_parent_class: Optional[Type[PdcDirectiveProtocol]] = None,
+) -> ast.AST:
     """
     Wrap the ast_comments parser (which wraps standard ast.parse()) in order to produce a tree with all the stock ast
     node types **plus** the Pdc node types of AstCommentV2, PdcNode, and PdcGroup
     """
-    return PdcNodeBase.convert_tree(ast_util.parse(source, filename, mode),
-                                    directive_parent_class=directive_parent_class)
+    return PdcNodeBase.convert_tree(
+        ast_util.parse(source, filename, mode), directive_parent_class=directive_parent_class
+    )
 
 
 if sys.version_info >= (3, 9):
 
     def unparse(ast_obj: ast.Module) -> str:
         return PdcNodeBase.Unparser().visit(ast_obj)
-
 
 
 _PdcDirectiveClassT = TypeVar("_PdcDirectiveClassT", bound=PdcDirectiveProtocol)
@@ -79,6 +93,7 @@ class PdcNodeBase(ast.AST, Generic[_PdcDirectiveClassT]):
       2) implement a visitor method in this class's PdcNodeBase.Unparser _or_ define a brand new `unparse()` method
          which uses a new Unparser
     """
+
     @classmethod
     def try_parse_as(cls) -> List[Type["PdcNodeBase[_PdcDirectiveClassT]"]]:
         """When converting nodes into this type, try parsing as these subclasses in the given order"""
@@ -95,7 +110,9 @@ class PdcNodeBase(ast.AST, Generic[_PdcDirectiveClassT]):
                 self.visit_If(node)
 
     @classmethod
-    def as_pdc_node(cls, node: ast.AST, directive_parent_class: Optional[Type[_PdcDirectiveClassT]] = None) -> Optional[Self]:
+    def as_pdc_node(
+        cls, node: ast.AST, directive_parent_class: Optional[Type[_PdcDirectiveClassT]] = None
+    ) -> Optional[Self]:
         """
         If the given node appears to be a PDC directive comment, emit a PdcNode for it. Otherwise, emit None
 
@@ -110,7 +127,7 @@ class PdcNodeBase(ast.AST, Generic[_PdcDirectiveClassT]):
         return parsed
 
     @classmethod
-    def convert_tree(cls, tree: ast.AST, directive_parent_class: Optional[Type[_PdcDirectiveClassT]]  = None) -> ast.AST:
+    def convert_tree(cls, tree: ast.AST, directive_parent_class: Optional[Type[_PdcDirectiveClassT]] = None) -> ast.AST:
         """
         Given an output from ast.parse() or from ast_comments.parse(), create a new tree where instances of
         AstCommentsV2 are replaced with instances of PdcNode. In some cases, multiple consecutive instances of Comment
@@ -150,17 +167,21 @@ class PdcNodeBase(ast.AST, Generic[_PdcDirectiveClassT]):
         raise NotImplementedError("implement in sub classes")
 
 
-class PdcNode(PdcNodeBase[_PdcDirectiveClassT], ast_util.AstCommentV2,  Generic[_PdcDirectiveClassT]):
+class PdcNode(PdcNodeBase[_PdcDirectiveClassT], ast_util.AstCommentV2, Generic[_PdcDirectiveClassT]):
     """Generic pdc node"""
+
     directive: _PdcDirectiveClassT
     """The attached directive instance"""
 
     @classmethod
-    def as_pdc_node(cls, node: ast.AST, directive_parent_class: Optional[Type[_PdcDirectiveClassT]]  = None) -> Optional[Self]:
+    def as_pdc_node(
+        cls, node: ast.AST, directive_parent_class: Optional[Type[_PdcDirectiveClassT]] = None
+    ) -> Optional[Self]:
         # Make an assertion on a not very important assumption. Review this if/when it fails
         assert node.lineno == node.end_lineno or node.end_lineno is None
         if directive_parent_class is None:
             from python_dynamic_code.parse.directives import PdcDirective
+
             directive_parent_class = PdcDirective
 
         # We can only convert from AstCommentsV2 nodes
@@ -249,8 +270,9 @@ class PdcGroup(ast.If, PdcNodeBase[_PdcDirectiveClassT], Generic[_PdcDirectiveCl
         super().__init__(test, body, or_else)
 
     @classmethod
-    def as_pdc_node(cls, node: ast.AST, directive_parent_class: Optional[Type[_PdcDirectiveClassT]] = None) -> Optional[Self]:
-
+    def as_pdc_node(
+        cls, node: ast.AST, directive_parent_class: Optional[Type[_PdcDirectiveClassT]] = None
+    ) -> Optional[Self]:
         # A PdcGroup node starts as a PdcNode and then looks at its directive and, if it is a group starter directive
         # then it promotes to a PdcGroup instance
         pdc_node = PdcNode.as_pdc_node(node, directive_parent_class)
@@ -300,7 +322,11 @@ class PdcGroup(ast.If, PdcNodeBase[_PdcDirectiveClassT], Generic[_PdcDirectiveCl
                         f"Section start (line {group_start.lineno}) must end with an EndSection directive with"
                         f"a matching section name ({self.start_directive.section_name})"
                     )
-            elif isinstance(most_recent_body, PdcNode) and isinstance(most_recent_body.directive, PdcGroupControlDirective) and most_recent_body.directive.is_end_tag:
+            elif (
+                isinstance(most_recent_body, PdcNode)
+                and isinstance(most_recent_body.directive, PdcGroupControlDirective)
+                and most_recent_body.directive.is_end_tag
+            ):
                 # This indicates that we are on a line immediately *after* we've already found the enddirective for
                 # our section.  This is the spot where we should **stop** absorbing siblings.  Return None
                 return None
@@ -316,10 +342,12 @@ class PdcOutputNode(ast.AST):
     yield '<code>').  It is an intermediate step and should be run through the `PdcOutputNode.convert_tree()` method
 
     """
+
     def convert_tree(self, tree: ast.AST) -> ast.AST:
         """
         Strip output nodes from the tree replace them with code which will output the node's content
         """
+
         class RewriteOutputNodes(ast.NodeTransformer):
             def visit_PdcOutputNode(self, node: ast.AST) -> ast.AST:
                 assert isinstance(node, PdcOutputNode)

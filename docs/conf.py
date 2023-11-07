@@ -1,8 +1,4 @@
 from importlib import metadata
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
 
 
 extensions = [

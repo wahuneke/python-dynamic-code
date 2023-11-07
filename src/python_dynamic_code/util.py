@@ -6,12 +6,15 @@ from dataclasses import field
 from functools import cached_property
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Optional
+from typing import Any
 from typing import Collection
 from typing import Generic
 from typing import Iterator
+from typing import List
 from typing import Mapping
 from typing import MutableMapping
+from typing import Optional
+from typing import Set
 from typing import TypeVar
 
 import more_itertools
@@ -55,13 +58,13 @@ class DictStack(Mapping[_KT, _VT], Generic[_KT, _VT]):
     can override those below. Further, popping topmost dictionary may restore previous values
     """
 
-    mapping_stack: list[MutableMapping[_KT, _VT]] = field(default_factory=list)
+    mapping_stack: List[MutableMapping[_KT, _VT]] = field(default_factory=list)
     """
     Stack of dictionaries where topmost will be the _first_ dictionary consulted for lookups (ie, overrides others)
     """
 
     @cached_property
-    def _key_set(self) -> set[_KT]:
+    def _key_set(self) -> Set[_KT]:
         return set(itertools.chain.from_iterable(self.mapping_stack))
 
     def _clear_key_set(self) -> None:

@@ -2,20 +2,23 @@
 Verify function of conversion writer, providing handling of code having line directives, section directives and code
 with varying level of nested blocks.
 """
-
 import ast
 import itertools
 from dataclasses import dataclass
 from textwrap import dedent
-from typing import Type, Union, List
+from typing import List
+from typing import Type
+from typing import Union
 
 import pytest
 from pytest_mock import MockerFixture
 
-from python_dynamic_code.parse import parse, ast_util, PdcSection
-from python_dynamic_code.parse.directives import PdcDirective
-from python_dynamic_code.parse.pdc_nodes import PdcDirectiveProtocol, unparse
 from python_dynamic_code.conversion_code.writer import ConversionCodeWriter
+from python_dynamic_code.parse import parse
+from python_dynamic_code.parse import PdcSection
+from python_dynamic_code.parse.ast_util import unparse
+from python_dynamic_code.parse.directives import PdcDirective
+from python_dynamic_code.parse.pdc_nodes import PdcDirectiveProtocol
 
 
 def run_test(mocker: MockerFixture, mock_directives: Type[PdcDirectiveProtocol], source: str) -> str:
@@ -40,6 +43,7 @@ class NoDirectives(PdcDirective):
 
 class SimpleDirectiveFamily(PdcDirective):
     """A basic collection of annotations and directives"""
+
     PREFIX = "# Test-"
 
 
@@ -51,7 +55,9 @@ class StartDirective(SimpleDirectiveFamily):
     is_end_tag = False
     section_name = "section_name"
 
-    def run_rule(self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]) -> Union[ast.AST, List[ast.AST]]:
+    def run_rule(
+        self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]
+    ) -> Union[ast.AST, List[ast.AST]]:
         return []
 
 
@@ -69,21 +75,30 @@ class CopyLineDirective(SimpleDirectiveFamily):
 
     TAG = "CopyLine"
 
-    def run_rule(self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]) -> Union[ast.AST, List[ast.AST]]:
+    def run_rule(
+        self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]
+    ) -> Union[ast.AST, List[ast.AST]]:
         if not isinstance(current_node, list):
             current_node = [current_node]
 
-        return list(itertools.chain(
-            current_node,
-            (
-            ast.Expr(value=ast.Yield(value=ast.Constant(value=ast.get_source_segment(original_source, node=node)), kind=None))
-            for node in current_node
+        return list(
+            itertools.chain(
+                current_node,
+                (
+                    ast.Expr(
+                        value=ast.Yield(
+                            value=ast.Constant(value=ast.get_source_segment(original_source, node=node)), kind=None
+                        )
+                    )
+                    for node in current_node
+                ),
             )
-        ))
+        )
 
 
 class CopySectionDirective(SimpleDirectiveFamily):
     """Indicates that the entire section should be echoed into conversion code"""
+
     TAG = "Copy"
 
 
@@ -139,7 +154,7 @@ class _Scenario:
     ids=lambda scenario: scenario.id_str,
 )
 def test_simple(mocker, scenario) -> None:
-    assert (run_test(mocker, scenario.mock_directives, dedent(scenario.test_source)) == dedent(scenario.expected_output))
+    assert run_test(mocker, scenario.mock_directives, dedent(scenario.test_source)) == dedent(scenario.expected_output)
 
 
 @pytest.mark.parametrize(

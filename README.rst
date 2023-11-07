@@ -16,8 +16,8 @@ Consult `project documentation`_  for more information.
 .. |versions| image:: https://img.shields.io/pypi/pyversions/python_dynamic_code.svg
     :target: https://pypi.org/pypi/python-dynamic-code
 
-.. |github-actions| image:: https://github.com/wahuneke/pytest-dynamic-code/workflows/main/badge.svg
-    :target: https://github.com/wahuneke/pytest-dynamic-code/actions
+.. |github-actions| image:: https://github.com/wahuneke/python-dynamic-code/workflows/main/badge.svg
+    :target: https://github.com/wahuneke/python-dynamic-code/actions
 
 .. |black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
     :target: https://github.com/ambv/black

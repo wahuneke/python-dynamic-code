@@ -1,16 +1,17 @@
 import ast
 import itertools
 from dataclasses import dataclass
-from typing import ClassVar, Union
+from typing import ClassVar
 from typing import Collection
 from typing import Iterable
 from typing import List
 from typing import NoReturn
 from typing import Optional
-from typing import Self
 from typing import Tuple
+from typing import Union
 
 from more_itertools import peekable
+from typing_extensions import Self
 
 
 @dataclass
@@ -55,9 +56,10 @@ class PdcDirective:
         Update rules given the current one.  For instance, if this is a KillSection rule, go through and eliminate
         any current rules which contradict this (e.g. verbatim rules)
         """
-        pass
 
-    def run_rule(self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]) -> Union[ast.AST, List[ast.AST]]:
+    def run_rule(
+        self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]
+    ) -> Union[ast.AST, List[ast.AST]]:
         """
         Apply this rule's operations on the current node (generally, don't apply to this node's children). Those will
         be visited later and run_rule will go again for those child nodes
@@ -253,18 +255,23 @@ class VerbatimDirective(SectionAttachment):
 
     TAG = "Verbatim"
 
-    def run_rule(self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]) -> Union[ast.AST, List[ast.AST]]:
+    def run_rule(
+        self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]
+    ) -> Union[ast.AST, List[ast.AST]]:
         if not isinstance(current_node, list):
             current_node = [current_node]
 
         return list(
             itertools.chain(
-        current_node,
+                current_node,
                 (
-                    ast.Expr(value=ast.Yield(
-                        value=ast.Constant(value=ast.get_source_segment(original_source, node=node)), kind=None))
+                    ast.Expr(
+                        value=ast.Yield(
+                            value=ast.Constant(value=ast.get_source_segment(original_source, node=node)), kind=None
+                        )
+                    )
                     for node in current_node
-                )
+                ),
             )
         )
 
@@ -315,17 +322,26 @@ class VerbatimLineDirective(LineDirective):
     """Indicates that the following line should be echoed verbatim into conversion output"""
 
     TAG = "VerbatimLine"
-    def run_rule(self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]) -> Union[ast.AST, List[ast.AST]]:
+
+    def run_rule(
+        self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]
+    ) -> Union[ast.AST, List[ast.AST]]:
         if not isinstance(current_node, list):
             current_node = [current_node]
 
-        return list(itertools.chain(
-            current_node,
-            (
-            ast.Expr(value=ast.Yield(value=ast.Constant(value=ast.get_source_segment(original_source, node=node)), kind=None))
-            for node in current_node
+        return list(
+            itertools.chain(
+                current_node,
+                (
+                    ast.Expr(
+                        value=ast.Yield(
+                            value=ast.Constant(value=ast.get_source_segment(original_source, node=node)), kind=None
+                        )
+                    )
+                    for node in current_node
+                ),
             )
-        ))
+        )
 
 
 class KillLineDirective(LineDirective):

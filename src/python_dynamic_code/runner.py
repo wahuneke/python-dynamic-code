@@ -5,9 +5,12 @@ from dataclasses import field
 from functools import partial
 from textwrap import dedent
 from types import ModuleType
-from typing import Union, Iterable, Optional
+from typing import Iterable
+from typing import Optional
+from typing import Union
 
-from python_dynamic_code.parse import parse, ast_util
+from python_dynamic_code.parse import ast_util
+from python_dynamic_code.parse import parse
 
 
 class PdcStream:

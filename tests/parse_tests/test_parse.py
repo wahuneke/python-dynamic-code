@@ -5,7 +5,9 @@ from typing import Sequence
 import pytest
 from _pytest.mark import ParameterSet
 
-from python_dynamic_code.parse.directives import KillLineDirective, StartDirective, PdcDirective
+from python_dynamic_code.parse.directives import KillLineDirective
+from python_dynamic_code.parse.directives import PdcDirective
+from python_dynamic_code.parse.directives import StartDirective
 from python_dynamic_code.parse.directives import VerbatimLineDirective
 from python_dynamic_code.parse.parser import PdcSection
 from python_dynamic_code.runner import PdcStream
