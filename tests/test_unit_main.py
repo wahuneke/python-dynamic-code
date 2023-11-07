@@ -39,7 +39,8 @@ def simple_func_demo(mocker) -> RunnerTestType:
     mocker.patch(
         "python_dynamic_code.main.get_conversion_code_tree",
         return_value=parse(
-            "def my_func(x,y):\n\tyield 'def my_func(x,y):'\n\tyield '\treturn x,y' if x < 5 else '\treturn -1*x, -1*y'\n"
+            "def my_func(x,y):\n\tyield 'def my_func(x,y):'\n"
+            "\tyield '\treturn x,y' if x < 5 else '\treturn -1*x, -1*y'\n"
         ),
     )
 
@@ -60,7 +61,8 @@ def auto_builder_func_demo(mocker, request) -> RunnerTestType:
     mocker.patch(
         "python_dynamic_code.main.get_conversion_code_tree",
         return_value=parse(
-            "def my_func(x,y):\n\tyield 'def my_func(x,y):'\n\tyield '\treturn x,y' if x < 5 else '\treturn -1*x, -1*y'\n"
+            "def my_func(x,y):\n\tyield 'def my_func(x,y):'\n"
+            "\tyield '\treturn x,y' if x < 5 else '\treturn -1*x, -1*y'\n"
         ),
     )
 

@@ -22,7 +22,7 @@ def builder_class() -> Type[DynamicCodeBuilder]:
         def template_handler(self, section_name: str, template_matched: str, local_namespace: Mapping[str, Any]) -> str:
             raise NotImplementedError("not a real builder")
 
-        def refresh(self, runner, *args: "_P.args", **kwargs: "_P.kwargs") -> None:
+        def refresh(self, runner, *args: Any, **kwargs: Any) -> None:
             # Just set the exec block back to the original function. No conversion running in this test
             runner.exec_block = runner.code
 
