@@ -63,7 +63,7 @@ What are the risks?
 This is a brand new project, originating mostly out of personal curiosity. If other people make use of it and submit
 issues, this section may be updated.  For now, just off the top of my head:
 
-* This library ultimately utilizes `python exec` in order to do what it does. This function introduces behavior that
+* This library ultimately utilizes ``python exec`` in order to do what it does. This function introduces behavior that
   does not arise very often in typical Python projects
 
   - Depending on how ``PDC`` is being used, there is potential for the introduction of **arbitrary code execution**
