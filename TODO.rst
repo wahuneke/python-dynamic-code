@@ -7,3 +7,5 @@ Wishlist, areas for investigation, possible improvements, etc:
 * rewrite the Runner and Builder code in fast C
 * improve handling for fast path funcs that have other decorators on them. Right now, the func is read directly as a
   container for source code and any attached decorators are lost / meaningless
+* fix (finish implement) support for attaching to staticmethod and classmethod fast path functions (instead of current
+  limit of only attaching to standalone functions and to regular methods)

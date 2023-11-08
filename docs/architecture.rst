@@ -6,8 +6,8 @@ The architecture of the system is based on the following components:
 * **a decorated function** - the source code inside a function will be annotated with PDC Directives and will
   be decorated with an instance of DynamicCodeBuilder
 
-  - At runtime, accessing the decorated function (or instance method, or classmethod) will provide access to an instance
-    of DynamicCodeRunner.  The primary usage of which is to be callable and to proxy calls through a pipeline of
+  - At runtime, accessing the decorated function (or instance method) will provide access to an instance of
+    DynamicCodeRunner.  The primary usage of which is to be callable and to proxy calls through a pipeline of
     re-written code
 
 * **a DynamicCodeBuilder** - implemented by the user of the ``PDC`` package, the builder allows for customization of
