@@ -210,15 +210,15 @@ class UnboundDynamicCodeRunner(DynamicCodeRunner[Concatenate[_T, _P], _R], Gener
         self.owner_class = owner
 
     @overload
-    def __get__(self, instance: None, owner: type) -> "UnboundDynamicCodeRunner[_T, _P, _R]":
+    def __get__(self, instance: None, owner: Type[_T]) -> "UnboundDynamicCodeRunner[_T, _P, _R]":
         ...
 
     @overload
-    def __get__(self, instance: object, owner: Optional[type]) -> "DynamicCodeRunner[_P, _R]":
+    def __get__(self, instance: _T, owner: Optional[Type[_T]]) -> "DynamicCodeRunner[_P, _R]":
         ...
 
     def __get__(
-        self, instance: Optional[object], owner: Optional[type]
+        self, instance: Optional[_T], owner: Optional[Type[_T]]
     ) -> Union["UnboundDynamicCodeRunner[_T, _P, _R]", "DynamicCodeRunner[_P, _R]",]:
         if instance is None:
             assert owner is not None
@@ -226,10 +226,11 @@ class UnboundDynamicCodeRunner(DynamicCodeRunner[Concatenate[_T, _P], _R], Gener
         else:
             return DynamicCodeRunner(self.builder, partial(self.code, instance))
 
-    if TYPE_CHECKING:
-
-        def __call__(self, t_var: _T, *args: _P.args, **kwargs: _P.kwargs) -> _R:
-            ...
+    #
+    # if TYPE_CHECKING:
+    #
+    #     def __call__(self, t_var: _T, *args: _P.args, **kwargs: _P.kwargs) -> _R:
+    #         ...
 
 
 class DynamicCodeBuilder(abc.ABC):
@@ -293,7 +294,7 @@ class DynamicCodeBuilder(abc.ABC):
 
     def __call__(
         self, fn: "Callable[Concatenate[_T, _P], _R]"
-    ) -> Union[UnboundDynamicCodeRunner[_T, _P, _R], DynamicCodeRunner[Concatenate[_T, _P], _R]]:
+    ) -> Union[UnboundDynamicCodeRunner[_T, _P, _R], DynamicCodeRunner[_P, _R]]:
         if isinstance(fn, staticmethod):
             return self.runner_class(self, fn)
         else:
