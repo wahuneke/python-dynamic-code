@@ -129,6 +129,7 @@ class DynamicCodeRunner(Generic[_P, _R]):
         re-calculate the exec block.
         """
         assert self.builder.automatic_recalculation_cmp_func is not None
+        assert not isinstance(self.automatic_cache, int)
         if (
             self.automatic_cache is None
             or self.exec_block is None
@@ -192,7 +193,7 @@ class DynamicCodeRunner(Generic[_P, _R]):
         self.builder.refresh(self, *args, **kwargs)
 
 
-class UnboundDynamicCodeRunner(DynamicCodeRunner[_P, _R], Generic[_T, _P, _R]):
+class UnboundDynamicCodeRunner(DynamicCodeRunner[Concatenate[_T, _P], _R], Generic[_T, _P, _R]):
     """
     When used as a method, but not yet bound to an instance or type, the function will appear to be an instance
     of this subclass.  Functionally identical to the `DynamicCodeRunner`, present only for accurate typing.
