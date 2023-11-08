@@ -35,7 +35,7 @@ __all__ = [
 _P = ParamSpec("_P")
 _R = TypeVar("_R", covariant=True)
 _T = TypeVar("_T")
-
+_T2 = TypeVar("_T2")
 
 _ExecParamsType = Tuple[Tuple[Any, ...], Mapping[str, Any]]
 """When the full set of call arguments is to be passed to a call, it will be passed in this form"""
@@ -217,9 +217,18 @@ class UnboundDynamicCodeRunner(DynamicCodeRunner[Concatenate[_T, _P], _R], Gener
     def __get__(self, instance: _T, owner: Optional[Type[_T]]) -> "DynamicCodeRunner[_P, _R]":
         ...
 
+    @overload
+    def __get__(self, instance: _T2, owner: Optional[Type[_T2]]) -> "DynamicCodeRunner[Concatenate[float, _T, _P], _R]":
+        """This overload handles the staticmethod case"""
+        ...
+
     def __get__(
-        self, instance: Optional[_T], owner: Optional[Type[_T]]
-    ) -> Union["UnboundDynamicCodeRunner[_T, _P, _R]", "DynamicCodeRunner[_P, _R]",]:
+        self, instance: Optional[Any], owner: Optional[Type[Any]]
+    ) -> Union[
+        "UnboundDynamicCodeRunner[_T, _P, _R]",
+        "DynamicCodeRunner[_P, _R]",
+        "DynamicCodeRunner[Concatenate[float, _T, _P], _R]",
+    ]:
         if instance is None:
             assert owner is not None
             return self
