@@ -130,7 +130,7 @@ class PdcNodeBase(ast.AST, Generic[_PdcDirectiveClassT]):
 
         Subclasses must override this function
         """
-        parsed = None
+        parsed: Optional[Self] = None
         for try_class in cls.try_parse_as():
             parsed = try_class.as_pdc_node(node, directive_parent_class)
             if parsed:

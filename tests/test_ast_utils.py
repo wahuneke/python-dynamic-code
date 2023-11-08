@@ -77,6 +77,7 @@ def test_find_ast_commentsv2() -> None:
         """
     )
     tree = ast_util.parse(source)
+    assert isinstance(tree, ast.Module)
 
     body_2 = tree.body[2]
     assert isinstance(body_2, AstCommentV2) and body_2.comment == "# I'm a comment"

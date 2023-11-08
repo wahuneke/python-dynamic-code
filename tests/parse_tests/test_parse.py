@@ -1,6 +1,6 @@
 import re
 from textwrap import dedent
-from typing import Sequence
+from typing import Sequence, List
 
 import pytest
 from _pytest.mark import ParameterSet
@@ -33,7 +33,7 @@ def do_parse(input_code: str) -> Sequence[PdcSection]:
         ),
     ],
 )
-def test_find_tags(code_string, expected_annotations) -> None:
+def test_find_tags(code_string: str, expected_annotations: List[PdcDirective]) -> None:
     assert list(PdcDirective.find_directives(code_string)) == expected_annotations
 
 
@@ -143,7 +143,7 @@ class TestSectionParse:
         ),
     ],
 )
-def test_line_directive_parse(input_code, expect_line_attachments) -> None:
+def test_line_directive_parse(input_code: str, expect_line_attachments: List[PdcDirective]) -> None:
     """A few simple tests for parsing line directives"""
     sections = do_parse(input_code)
 

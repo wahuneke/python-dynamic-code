@@ -30,7 +30,7 @@ class RuleMakerProtocol(Protocol):
     lineno: int
     """The original source line where this rule was declared"""
 
-    def update_rules(self, current_rules: Sequence["SectionRuleMakerProtocol"]) -> None:
+    def update_rules(self, current_rules: Sequence[Union["RuleMakerProtocol", "SectionRuleMakerProtocol"]]) -> None:
         """
         Update rules given the current one.  For instance, if this is a KillSection rule, go through and eliminate
         any current rules which contradict this (e.g. verbatim rules).
@@ -177,6 +177,8 @@ class ConversionCodeWriter(NodeTransformer):
 
             return None
         else:
+            node_directives: List[Union[RuleMakerProtocol, SectionRuleMakerProtocol]]
+
             if self.current_line_directives:
                 node_directives = list(self.current_section_rules)
                 # Update our current section directives based on the line directives (which have the highest priority,
@@ -185,7 +187,7 @@ class ConversionCodeWriter(NodeTransformer):
                     rule.update_rules(node_directives)
                 node_directives.extend(self.current_line_directives)
             else:
-                node_directives = self.current_section_rules
+                node_directives = list(self.current_section_rules)
 
             result = [node]
             # Run each rule until result is None or until we have run all the rules

@@ -81,7 +81,7 @@ class DynamicCodeRunner(Generic[_P, _R]):
     exec_block: Optional[Callable[_P, _R]]
     conversion_function: _ConversionFunction[_P]
 
-    def __init__(self, builder: "DynamicCodeBuilder", attached_func: Callable[_P, _R]) -> None:
+    def __init__(self, builder: "DynamicCodeBuilder", attached_func: Callable[_P, _R], **kwargs: Any) -> None:
         global _runner_counter
         _runner_counter += 1
         self.runner_number = _runner_counter
@@ -200,17 +200,17 @@ class UnboundDynamicCodeRunner(DynamicCodeRunner[Concatenate[_T, _P], _R], Gener
 
     owner_class: Optional[object]
 
-    use_bound_class: Type[DynamicCodeRunner]
+    use_bound_class: Type[DynamicCodeRunner[_P, _R]]
 
     def __init__(
         self,
         builder: "DynamicCodeBuilder",
         attached_func: "Callable[Concatenate[_T, _P], _R]",
-        use_bound_class: Optional[Type[DynamicCodeRunner]] = None,
+        use_bound_class: Optional[Type[DynamicCodeRunner[_P, _R]]] = None,
     ) -> None:
         super().__init__(builder, attached_func)
         self.owner_class = None
-        self.use_bound_class = use_bound_class or DynamicCodeRunner
+        self.use_bound_class = use_bound_class or DynamicCodeRunner[_P, _R]
 
     def __set_name__(self, owner: object, name: str) -> None:
         assert self.owner_class is None, "This decorator should only be used once"

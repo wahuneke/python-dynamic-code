@@ -34,7 +34,7 @@ class PdcSection:
 
     pdc_group: PdcGroup[PdcDirectiveProtocol]
     sub_sections: Sequence["PdcSection"]
-    attachments: Sequence["SectionAttachment"]
+    attachments: Sequence["SectionRuleMakerProtocol"]
     statement_attachments: Mapping[ast.AST, Sequence["LineDirective"]]
 
     def get_attachments(self) -> Iterable["SectionRuleMakerProtocol"]:
