@@ -201,17 +201,9 @@ class UnboundDynamicCodeRunner(DynamicCodeRunner[Concatenate[_T, _P], _R], Gener
 
     owner_class: Optional[object]
 
-    use_bound_class: Type[DynamicCodeRunner]
-
-    def __init__(
-        self,
-        builder: "DynamicCodeBuilder",
-        attached_func: "Callable[Concatenate[_T, _P], _R]",
-        use_bound_class: Optional[Type[DynamicCodeRunner]] = None,
-    ) -> None:
+    def __init__(self, builder: "DynamicCodeBuilder", attached_func: "Callable[Concatenate[_T, _P], _R]") -> None:
         super().__init__(builder, attached_func)
         self.owner_class = None
-        self.use_bound_class = use_bound_class or DynamicCodeRunner
 
     def __set_name__(self, owner: object, name: str) -> None:
         assert self.owner_class is None, "This decorator should only be used once"
@@ -225,14 +217,29 @@ class UnboundDynamicCodeRunner(DynamicCodeRunner[Concatenate[_T, _P], _R], Gener
     def __get__(self, instance: _T, owner: Optional[Type[_T]]) -> "DynamicCodeRunner[_P, _R]":
         ...
 
+    @overload
+    def __get__(self, instance: _T2, owner: Optional[Type[_T2]]) -> "DynamicCodeRunner[Concatenate[float, _T, _P], _R]":
+        """This overload handles the staticmethod case"""
+        ...
+
     def __get__(
         self, instance: Optional[Any], owner: Optional[Type[Any]]
-    ) -> Union["UnboundDynamicCodeRunner[_T, _P, _R]", "DynamicCodeRunner[_P, _R]",]:
+    ) -> Union[
+        "UnboundDynamicCodeRunner[_T, _P, _R]",
+        "DynamicCodeRunner[_P, _R]",
+        "DynamicCodeRunner[Concatenate[float, _T, _P], _R]",
+    ]:
         if instance is None:
             assert owner is not None
             return self
         else:
-            return self.use_bound_class(self.builder, partial(self.code, instance))
+            return DynamicCodeRunner(self.builder, partial(self.code, instance))
+
+    #
+    # if TYPE_CHECKING:
+    #
+    #     def __call__(self, t_var: _T, *args: _P.args, **kwargs: _P.kwargs) -> _R:
+    #         ...
 
 
 class DynamicCodeBuilder(abc.ABC):
@@ -300,7 +307,7 @@ class DynamicCodeBuilder(abc.ABC):
         if isinstance(fn, staticmethod):
             return self.runner_class(self, fn)
         else:
-            return self.unbound_runner_class(self, fn, use_bound_class=self.runner_class)
+            return self.unbound_runner_class(self, fn)
 
     @abc.abstractmethod
     def template_handler(self, section_name: str, template_matched: str, local_namespace: Mapping[str, Any]) -> str:
