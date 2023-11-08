@@ -1,11 +1,13 @@
 """
 Test variations of ways to use DynamicCodeBuilder to attach to different types of functions
 """
-from typing import Any, TypeVar, Dict
+from typing import Any
 from typing import Callable
+from typing import Dict
 from typing import Mapping
 from typing import Tuple
 from typing import Type
+from typing import TypeVar
 
 import pytest
 from typing_extensions import ParamSpec

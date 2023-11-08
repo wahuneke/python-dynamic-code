@@ -103,6 +103,9 @@ class CopySectionDirective(SimpleDirectiveFamily):
     TAG = "Copy"
 
 
+assert isinstance(SimpleDirectiveFamily, PdcDirectiveProtocol)
+
+
 @dataclass
 class _Scenario:
     id_str: str
@@ -154,7 +157,7 @@ class _Scenario:
     ],
     ids=lambda scenario: scenario.id_str,
 )
-def test_simple(mocker, scenario) -> None:
+def test_simple(mocker: MockerFixture, scenario: _Scenario) -> None:
     assert run_test(mocker, scenario.mock_directives, dedent(scenario.test_source)) == dedent(scenario.expected_output)
 
 
@@ -194,5 +197,5 @@ def test_simple(mocker, scenario) -> None:
     ],
     ids=lambda scenario: scenario.id_str,
 )
-def test_verbatim_scenarios(mocker, scenario) -> None:
+def test_verbatim_scenarios(mocker: MockerFixture, scenario: _Scenario) -> None:
     assert run_test(mocker, scenario.mock_directives, dedent(scenario.test_source)) == dedent(scenario.expected_output)

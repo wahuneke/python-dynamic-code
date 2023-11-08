@@ -78,7 +78,7 @@ def input_to_conversion_code(input_code: str) -> str:
         ),
     ],
 )
-def test_simple(try_input, expect_output) -> None:
+def test_simple(try_input: str, expect_output: str) -> None:
     """Try a few simple cases"""
     assert input_to_conversion_code(try_input) == expect_output
 

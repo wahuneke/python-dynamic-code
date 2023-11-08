@@ -13,6 +13,8 @@ from typing import Union
 from more_itertools import peekable
 from typing_extensions import Self
 
+from python_dynamic_code.parse.pdc_nodes import PdcDirectiveProtocol
+
 
 @dataclass
 class PdcDirective:
@@ -193,6 +195,9 @@ class PdcDirective:
         """Apply any changes to output destined to _exec_ code (including possibly dropping it altogether)"""
         _ = line_no
         return source
+
+
+assert isinstance(PdcDirective, PdcDirectiveProtocol)
 
 
 class SectionAttachment(PdcDirective):

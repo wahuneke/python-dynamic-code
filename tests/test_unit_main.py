@@ -6,6 +6,7 @@ from typing import Mapping
 from typing import Tuple
 
 import pytest
+from pytest_mock import MockerFixture
 
 from python_dynamic_code import DynamicCodeBuilder
 from python_dynamic_code import simple_automatic_recalculation_cmp
@@ -26,11 +27,11 @@ class MySimpleBuilder(DynamicCodeBuilder):
 if sys.version_info < (3, 9):
     RunnerTestType = UnboundDynamicCodeRunner
 else:
-    RunnerTestType = UnboundDynamicCodeRunner[int, [int], Tuple]
+    RunnerTestType = UnboundDynamicCodeRunner[int, [int], Tuple[int, int]]
 
 
 @pytest.fixture
-def simple_func_demo(mocker) -> RunnerTestType:
+def simple_func_demo(mocker: MockerFixture) -> RunnerTestType:
     """
     Create a code runner based on a simple conversion script that changes code between returning (x,y) and returning
     (y,y) depending on the value of x.  In this case, 'x' is an example of a "slow param" meaning it changes
@@ -45,16 +46,17 @@ def simple_func_demo(mocker) -> RunnerTestType:
     )
 
     @MySimpleBuilder()
-    def my_func(x: int, y: int) -> tuple:
+    def my_func(x: int, y: int) -> Tuple[int, int]:
         # This body gets completely overwritten by the output of the mock conversion code
         # Just need placeholder here so that mypy passes
         return x, y
 
+    assert isinstance(my_func, UnboundDynamicCodeRunner)
     return my_func
 
 
 @pytest.fixture(params=["comparison", "hash"])
-def auto_builder_func_demo(mocker, request) -> RunnerTestType:
+def auto_builder_func_demo(mocker: MockerFixture, request: Any) -> RunnerTestType:
     """
     Create a simple builder but setup with different automatic comparison modes
     """
@@ -82,11 +84,12 @@ def auto_builder_func_demo(mocker, request) -> RunnerTestType:
             raise NotImplementedError("This should not be called in theses tests")
 
     @MySimpleBuilderAuto()
-    def my_func(x: int, y: int) -> tuple:
+    def my_func(x: int, y: int) -> Tuple[int, int]:
         # This body gets completely overwritten by the output of the mock conversion code
         # Just need placeholder here so that mypy passes
         return x, y
 
+    assert isinstance(my_func, UnboundDynamicCodeRunner)
     return my_func
 
 

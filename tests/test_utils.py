@@ -4,7 +4,7 @@ from python_dynamic_code.util import DictStack
 
 
 def test_dict_stack() -> None:
-    d1: DictStack = DictStack()
+    d1: DictStack[str, int] = DictStack()
     d1.push({"a": 1, "b": 2})
     d1.push({"a": 3, "c": 4})
     assert set(d1) == {"a", "b", "c"}

@@ -3,7 +3,9 @@ import sys
 from pathlib import Path
 from textwrap import dedent
 from types import ModuleType
-from typing import Generator, Callable, Tuple
+from typing import Callable
+from typing import Generator
+from typing import Tuple
 
 import pytest
 

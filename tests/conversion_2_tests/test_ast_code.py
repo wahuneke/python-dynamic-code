@@ -234,7 +234,7 @@ def test_find_pdc_section() -> None:
         ),
     ],
 )
-def test_find_pdc_section_scenarios(source, expect_result) -> None:
+def test_find_pdc_section_scenarios(source: str, expect_result: str) -> None:
     """
     Try some more complicated scenarios (nested sections, etc)
     """
