@@ -9,17 +9,19 @@ from types import ModuleType
 from typing import Any
 from typing import Collection
 from typing import Generic
+from typing import Iterable
 from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
 from typing import Set
+from typing import Type
 from typing import TypeVar
 
 import more_itertools
 
-__all__ = ["has_instance", "DictStack", "count_indent_columns"]
+__all__ = ["has_instance", "DictStack", "count_indent_columns", "not_optional", "import_module_from_file"]
 
 _KT = TypeVar("_KT")
 _VT = TypeVar("_VT")
@@ -31,6 +33,14 @@ def not_optional(val: Optional[_T]) -> _T:
     if val is None:
         raise TypeError("Value cannot be None")
     return val
+
+
+def iter_of_type(it: Iterable[Any], t: Type[_T]) -> Iterator[_T]:
+    """Typecast with type assertion.  TypeError will be raised if any item is not of the given type"""
+    for i in it:
+        if not isinstance(i, t):
+            raise TypeError(f"Expected {t.__name__}, got {type(i).__name__}")
+        yield i
 
 
 def import_module_from_file(module_name: str, module_file: Path) -> ModuleType:

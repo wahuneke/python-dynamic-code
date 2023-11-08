@@ -290,7 +290,9 @@ class DynamicCodeBuilder(abc.ABC):
     runner_class: ClassVar[Type[DynamicCodeRunner]] = DynamicCodeRunner  # type: ignore
     """This can be set to a subclass of `DynamicCodeRunner` to change the behavior of the decorator."""
 
-    def __call__(self, fn: "Callable[Concatenate[_T, _P], _R]") -> UnboundDynamicCodeRunner[_T, _P, _R]:
+    def __call__(
+        self, fn: "Callable[Concatenate[_T, _P], _R]"
+    ) -> Union[UnboundDynamicCodeRunner[_T, _P, _R], DynamicCodeRunner[Concatenate[_T, _P], _R]]:
         if isinstance(fn, staticmethod):
             return self.runner_class(self, fn)
         else:
@@ -308,7 +310,7 @@ class DynamicCodeBuilder(abc.ABC):
                 f"one of these values."
             )
 
-    def refresh(self, runner: DynamicCodeRunner, *args: "_P.args", **kwargs: "_P.kwargs") -> None:
+    def refresh(self, runner: DynamicCodeRunner[_P, _R], *args: "_P.args", **kwargs: "_P.kwargs") -> None:
         """
         Similar to running the `reset()` method, but this function also *executes* the conversion function, using
         the provided conversion args and kwargs, and produces an `exec_block` that is ready to run in the fast path.
@@ -322,7 +324,7 @@ class DynamicCodeBuilder(abc.ABC):
         runner.exec_code_str = "\n".join(runner.conversion_function(*args, **kwargs))
         runner.exec_block = runner.pdc_stream.add_new_function(runner.exec_code_str)
 
-    def setup_conversion_func(self, runner: DynamicCodeRunner) -> None:
+    def setup_conversion_func(self, runner: DynamicCodeRunner[_P, _R]) -> None:
         runner.conversion_code_ast = get_conversion_code_tree(runner.pdc_stream)
         runner.conversion_function = runner.pdc_stream.add_new_function(runner.conversion_code_ast)
 

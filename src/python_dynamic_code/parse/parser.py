@@ -11,8 +11,8 @@ from typing import Sequence
 from typing import TYPE_CHECKING
 
 from python_dynamic_code.parse.directives import LineDirective
-from python_dynamic_code.parse.directives import PdcDirective
 from python_dynamic_code.parse.directives import SectionAttachment
+from python_dynamic_code.parse.pdc_nodes import PdcDirectiveProtocol
 from python_dynamic_code.parse.pdc_nodes import PdcGroup
 from python_dynamic_code.parse.pdc_nodes import PdcNode
 
@@ -32,7 +32,7 @@ class PdcSection:
     how to process the given section, what code to rewrite, what lines to drop, etc
     """
 
-    pdc_group: PdcGroup[PdcDirective]
+    pdc_group: PdcGroup[PdcDirectiveProtocol]
     sub_sections: Sequence["PdcSection"]
     attachments: Sequence["SectionAttachment"]
     statement_attachments: Mapping[ast.AST, Sequence["LineDirective"]]
@@ -45,7 +45,9 @@ class PdcSection:
         return self.pdc_group.group_name
 
     @classmethod
-    def parse_from(cls, parse_from_node: "PdcGroup", parse_sub_sections: bool = True) -> "PdcSection":
+    def parse_from(
+        cls, parse_from_node: "PdcGroup[PdcDirectiveProtocol]", parse_sub_sections: bool = True
+    ) -> "PdcSection":
         class Visitor(NodeVisitor):
             """Walk the whole subtree and collect: line directives, section attachments, and sub sections"""
 
@@ -54,13 +56,13 @@ class PdcSection:
             statement_attachments: MutableMapping[ast.AST, Sequence["LineDirective"]]
             building_line_attachment: List[LineDirective]
 
-            def __init__(self):
+            def __init__(self) -> None:
                 self.child_sections = []
                 self.attachments = []
                 self.statement_attachments = dict()
                 self.building_line_attachment = []
 
-            def generic_visit(self, node) -> None:
+            def generic_visit(self, node: AST) -> None:
                 if isinstance(node, PdcGroup):
                     if parse_sub_sections:
                         self.child_sections.append(cls.parse_from(node))
@@ -75,7 +77,7 @@ class PdcSection:
 
                 return super().visit(node)
 
-            def visit_PdcNode(self, node: ast.AST) -> None:
+            def visit_PdcNode(self, node: PdcNode[PdcDirectiveProtocol]) -> None:
                 child_directive = node.directive
                 if isinstance(child_directive, SectionAttachment):
                     self.attachments.append(child_directive)

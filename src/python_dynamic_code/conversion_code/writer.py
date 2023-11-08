@@ -1,4 +1,5 @@
 import ast
+import itertools
 import re
 from ast import NodeTransformer
 from dataclasses import field
@@ -9,6 +10,7 @@ from typing import MutableMapping
 from typing import Optional
 from typing import Protocol
 from typing import runtime_checkable
+from typing import Sequence
 from typing import Type
 from typing import Union
 
@@ -17,9 +19,10 @@ from typing_extensions import Self
 
 __all__ = ["ConversionCodeWriter"]
 
-from python_dynamic_code.parse.pdc_nodes import PdcGroup, PdcNode
+from python_dynamic_code.parse.pdc_nodes import PdcGroup, PdcNode, PdcDirectiveProtocol
+from python_dynamic_code.util import iter_of_type
 
-_TemplateMapType = MutableMapping[re.Pattern, Optional[str]]
+_TemplateMapType = MutableMapping[re.Pattern[str], Optional[str]]
 
 
 @runtime_checkable
@@ -27,7 +30,7 @@ class RuleMakerProtocol(Protocol):
     lineno: int
     """The original source line where this rule was declared"""
 
-    def update_rules(self, current_rules: List["RuleMakerProtocol"]) -> None:
+    def update_rules(self, current_rules: Sequence["SectionRuleMakerProtocol"]) -> None:
         """
         Update rules given the current one.  For instance, if this is a KillSection rule, go through and eliminate
         any current rules which contradict this (e.g. verbatim rules).
@@ -57,7 +60,7 @@ class RuleMakerGroupProtocol(Protocol):
         ...
 
     @classmethod
-    def parse_from(cls, parse_from_node: "PdcGroup", parse_sub_sections: bool = True) -> "Self":
+    def parse_from(cls, parse_from_node: "PdcGroup[PdcDirectiveProtocol]", parse_sub_sections: bool = True) -> "Self":
         ...
 
 
@@ -142,7 +145,9 @@ class ConversionCodeWriter(NodeTransformer):
 
             self.current_section_rules.extend(section.get_attachments())
 
-    def visit(self, node: ast.AST) -> Union[ast.AST, List[Any]]:
+    def visit(self, node: ast.AST) -> Optional[Union[ast.AST, List[Any]]]:
+        result: Union[ast.AST, List[ast.AST]]
+
         if isinstance(node, PdcGroup):
             if self.current_line_directives:
                 raise ValueError(
@@ -152,7 +157,14 @@ class ConversionCodeWriter(NodeTransformer):
 
             self.push_section_rules(self.rule_group_class.parse_from(node, parse_sub_sections=False))
             # Run visitor for all child nodes on node (but, key, not the group node itself)
-            result = list(filter(None, (self.visit(c) for c in node.body)))
+            result = list(
+                filter(
+                    None,
+                    itertools.chain.from_iterable(
+                        lc if isinstance(lc, list) else [lc] for lc in (self.visit(c) for c in node.body)
+                    ),
+                )
+            )
             self.pop_section_rules()
             return result
         elif isinstance(node, PdcNode):
@@ -162,6 +174,8 @@ class ConversionCodeWriter(NodeTransformer):
                 # Nothing to be done here.  Presumably this directive has already been processed and incorporated
                 # into the PdcSection
                 pass
+
+            return None
         else:
             if self.current_line_directives:
                 node_directives = list(self.current_section_rules)
@@ -173,7 +187,7 @@ class ConversionCodeWriter(NodeTransformer):
             else:
                 node_directives = self.current_section_rules
 
-            result = node
+            result = [node]
             # Run each rule until result is None or until we have run all the rules
             for rule in node_directives:
                 result = rule.run_rule(self.full_source, result)
@@ -181,6 +195,6 @@ class ConversionCodeWriter(NodeTransformer):
                     break
 
             if isinstance(result, list):
-                return list(filter(None, (super().visit(n) for n in result)))
+                return list(filter(None, (super().visit(n) for n in iter_of_type(result, ast.AST))))
             elif result is not None:
                 return super().visit(result)
