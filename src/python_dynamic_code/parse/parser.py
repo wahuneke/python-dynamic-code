@@ -11,6 +11,7 @@ from typing import Sequence
 from typing import TYPE_CHECKING
 
 from python_dynamic_code.parse.directives import LineDirective
+from python_dynamic_code.parse.directives import PdcDirective
 from python_dynamic_code.parse.directives import SectionAttachment
 from python_dynamic_code.parse.pdc_nodes import PdcGroup
 from python_dynamic_code.parse.pdc_nodes import PdcNode
@@ -31,7 +32,7 @@ class PdcSection:
     how to process the given section, what code to rewrite, what lines to drop, etc
     """
 
-    pdc_group: PdcGroup
+    pdc_group: PdcGroup[PdcDirective]
     sub_sections: Sequence["PdcSection"]
     attachments: Sequence["SectionAttachment"]
     statement_attachments: Mapping[ast.AST, Sequence["LineDirective"]]
@@ -59,7 +60,7 @@ class PdcSection:
                 self.statement_attachments = dict()
                 self.building_line_attachment = []
 
-            def generic_visit(self, node):
+            def generic_visit(self, node) -> None:
                 if isinstance(node, PdcGroup):
                     if parse_sub_sections:
                         self.child_sections.append(cls.parse_from(node))
@@ -74,7 +75,7 @@ class PdcSection:
 
                 return super().visit(node)
 
-            def visit_PdcNode(self, node: ast.AST):
+            def visit_PdcNode(self, node: ast.AST) -> None:
                 child_directive = node.directive
                 if isinstance(child_directive, SectionAttachment):
                     self.attachments.append(child_directive)

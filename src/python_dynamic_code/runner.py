@@ -5,12 +5,20 @@ from dataclasses import field
 from functools import partial
 from textwrap import dedent
 from types import ModuleType
+from typing import Callable
 from typing import Iterable
 from typing import Optional
+from typing import TypeVar
 from typing import Union
+
+from typing_extensions import cast
+from typing_extensions import ParamSpec
 
 from python_dynamic_code.parse import ast_util
 from python_dynamic_code.parse import parse
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
 
 class PdcStream:
@@ -30,7 +38,7 @@ class PdcStream:
     module: Optional[ModuleType] = field(init=False, default=None)
     """The module that the original source code came from. Or, None if source was a raw string (e.g. in a test case)"""
 
-    source_ast: ast.Module = field(init=False, default_factory=ast.AST)
+    source_ast: ast.Module = field(init=False, default_factory=ast.Module)
     """This is the annotated source after being parsed by the parsing sub package. ie, it will contain PdcNodes, etc"""
 
     source_code: str = field(init=False, default_factory=str)
@@ -39,7 +47,7 @@ class PdcStream:
     usually will include more than just the code from the individual function
     """
 
-    def __init__(self, name: str, code: Union[callable, str, Iterable[str]]):
+    def __init__(self, name: str, code: Union[Callable[_P, _R], str, Iterable[str]]):
         self.name = name
 
         if isinstance(code, str):
@@ -57,7 +65,9 @@ class PdcStream:
                 func = code
 
             self.filename = inspect.getsourcefile(func)
+            assert self.filename is not None
             self.module = inspect.getmodule(func)
+            assert self.module is not None
             self.source_code = inspect.getsource(self.module)
 
             lines, line_no = inspect.getsourcelines(func)
@@ -65,14 +75,15 @@ class PdcStream:
             try:
                 self.source_ast = parse(dedent("\n".join(lines)), self.filename)
             except SyntaxError as e:
-                e.lineno += line_no - 1
+                if e.lineno is not None:
+                    e.lineno += line_no - 1
                 # TODO: this line number fix gets the line number right but the code excerpt displayed will be wrong
                 #  (it will use the line number from the original file, not the line number from the function)
                 raise
 
             ast.increment_lineno(self.source_ast, line_no - 1)
 
-    def add_new_function(self, func: Union[str, "Module"]) -> callable:
+    def add_new_function(self, func: Union[str, "Module"]) -> Callable[_P, _R]:
         """
         Take the given function and 'add' it into the module by executing the definition code within the namespace
         of the module.  This ensures that, if the function makes reference to names or globals imported or defined
@@ -101,13 +112,15 @@ class PdcStream:
         new_func = ast_util.ast_rename_function(func, function_name)
 
         # Execute the new function definition, in the proper namespace. Return the new callable created there
-        compiled_new_func = compile(new_func, self.filename, mode="exec")
+        compiled_new_func = compile(new_func, self.filename or "<unknown>", mode="exec")
         assert compiled_new_func is not None
         exec(compiled_new_func, namespace)
 
-        return namespace[function_name]
+        result = namespace[function_name]
+        assert hasattr(result, "__call__")
+        return cast(Callable[_P, _R], result)
 
-    def remove_function(self, func: callable) -> None:
+    def remove_function(self, func: Callable[_P, _R]) -> None:
         """
         Given a temporary function that was created using the `add_new_function()` method, declare that the function
         is no longer needed. Recover important resources (in case of very-long running app with a large number of

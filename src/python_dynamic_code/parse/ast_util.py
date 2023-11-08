@@ -4,11 +4,13 @@ from _ast import FunctionDef
 from _ast import Module
 from copy import copy
 from typing import Any
+from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Union
 
-import ast_comments
+import ast_comments  # type: ignore
+from typing_extensions import cast
 from typing_extensions import Self
 
 
@@ -22,7 +24,7 @@ def parse(source: Union[str, bytes, ast.AST], filename: str = "<unknown>", mode:
 if sys.version_info >= (3, 9):
 
     def unparse(ast_obj: ast.AST) -> str:
-        return AstCommentV2.Unparser().visit(ast_obj)
+        return cast(str, AstCommentV2.Unparser().visit(ast_obj))
 
 else:
 
@@ -76,13 +78,15 @@ class AstCommentV2(ast.Expr):
 
     if sys.version_info >= (3, 9):
 
-        class Unparser(ast_comments._Unparser):
+        class Unparser(ast_comments._Unparser):  # type: ignore
             def visit_AstCommentV2(self, node: ast.AST) -> ast.AST:
-                return self.visit_Expr(node)
+                return self.visit_Expr(node)  # type: ignore
 
     @property
     def comment(self) -> str:
-        return self.value.value
+        v = self.value.value
+        assert isinstance(v, str)
+        return v
 
     @classmethod
     def from_comment(cls, comment: ast_comments.Comment) -> "Self":
@@ -110,7 +114,7 @@ class AstCommentV2(ast.Expr):
                 assert isinstance(node, ast_comments.Comment)
                 return AstCommentV2.from_comment(node)
 
-        return RewriteComments().visit(tree)
+        return cast(ast.AST, RewriteComments().visit(tree))
 
 
 class NodeMerger(ast.NodeTransformer):
@@ -136,7 +140,7 @@ class NodeMerger(ast.NodeTransformer):
         """Implementation adapted from generic_visit() on NodeTransformer"""
         for field, old_value in ast.iter_fields(node):
             if isinstance(old_value, list):
-                new_values = []
+                new_values: List[Any] = []
                 for value in old_value:
                     if isinstance(value, ast.AST):
                         value = self.generic_visit(value)

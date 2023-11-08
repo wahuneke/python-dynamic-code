@@ -59,7 +59,7 @@ class PdcDirective:
 
     def run_rule(
         self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]
-    ) -> Union[ast.AST, List[ast.AST]]:
+    ) -> Optional[Union[ast.AST, List[ast.AST]]]:
         """
         Apply this rule's operations on the current node (generally, don't apply to this node's children). Those will
         be visited later and run_rule will go again for those child nodes
@@ -257,7 +257,7 @@ class VerbatimDirective(SectionAttachment):
 
     def run_rule(
         self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]
-    ) -> Union[ast.AST, List[ast.AST]]:
+    ) -> Optional[Union[ast.AST, List[ast.AST]]]:
         if not isinstance(current_node, list):
             current_node = [current_node]
 
@@ -325,7 +325,7 @@ class VerbatimLineDirective(LineDirective):
 
     def run_rule(
         self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]
-    ) -> Union[ast.AST, List[ast.AST]]:
+    ) -> Optional[Union[ast.AST, List[ast.AST]]]:
         if not isinstance(current_node, list):
             current_node = [current_node]
 

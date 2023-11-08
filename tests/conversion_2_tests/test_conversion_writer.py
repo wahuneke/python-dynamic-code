@@ -7,6 +7,7 @@ import itertools
 from dataclasses import dataclass
 from textwrap import dedent
 from typing import List
+from typing import Optional
 from typing import Type
 from typing import Union
 
@@ -77,7 +78,7 @@ class CopyLineDirective(SimpleDirectiveFamily):
 
     def run_rule(
         self, original_source: str, current_node: Union[ast.AST, List[ast.AST]]
-    ) -> Union[ast.AST, List[ast.AST]]:
+    ) -> Optional[Union[ast.AST, List[ast.AST]]]:
         if not isinstance(current_node, list):
             current_node = [current_node]
 

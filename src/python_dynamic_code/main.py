@@ -54,13 +54,19 @@ A conversion function is a callable taking a parameter set and returning an iter
 
 
 class PdcConversionError(Exception):
-    def __init__(self, filename, func_object, conv_args: Optional[Tuple] = None, conv_kwargs: Optional[Mapping] = None):
+    def __init__(
+        self,
+        filename: str,
+        func_object: Any,
+        conv_args: Optional[Tuple[Any, ...]] = None,
+        conv_kwargs: Optional[Mapping[str, Any]] = None,
+    ) -> None:
         self.filename = filename
         self.func_object = func_object
         self.conv_args = conv_args
         self.conv_kwargs = conv_kwargs
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.filename}{inspect.getsource(self.func_object)}\n{self.conv_args}\n{self.conv_kwargs}"
 
 
@@ -103,15 +109,18 @@ class DynamicCodeRunner(Generic[_P, _R]):
         if not self.exec_block:
             self.refresh(*args, **kwargs)
 
+        assert self.exec_block is not None
         return self.exec_block(*args, **kwargs)
 
     def _call_hash_mode(self, *args: "_P.args", **kwargs: "_P.kwargs") -> _R:
         """In automatic (hash) mode, we calculate a hash of inputs and re-calculate exec block if changed"""
+        assert self.builder.automatic_recalculation_hash_func is not None
         call_hash = self.builder.automatic_recalculation_hash_func((args, kwargs))
         if self.automatic_cache != call_hash or self.exec_block is None:
             self.refresh(*args, **kwargs)
             self.automatic_cache = call_hash
 
+        assert self.exec_block is not None
         return self.exec_block(*args, **kwargs)
 
     def _call_comp_mode(self, *args: "_P.args", **kwargs: "_P.kwargs") -> _R:
@@ -119,6 +128,7 @@ class DynamicCodeRunner(Generic[_P, _R]):
         In automatic (comparison) mode, we run a full comparison of passed arguments to decide whether to
         re-calculate the exec block.
         """
+        assert self.builder.automatic_recalculation_cmp_func is not None
         if (
             self.automatic_cache is None
             or self.exec_block is None
@@ -127,6 +137,7 @@ class DynamicCodeRunner(Generic[_P, _R]):
             self.refresh(*args, **kwargs)
             self.automatic_cache = (args, kwargs)
 
+        assert self.exec_block is not None
         return self.exec_block(*args, **kwargs)
 
     def reset(self) -> None:

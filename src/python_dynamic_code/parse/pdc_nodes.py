@@ -58,6 +58,16 @@ def parse(
     ...
 
 
+@overload
+def parse(
+    source: Union[str, bytes, ast.AST],
+    filename: str = "<unknown>",
+    mode: str = "exec",
+    directive_parent_class: Optional[Type[PdcDirectiveProtocol]] = None,
+) -> ast.Module:
+    ...
+
+
 def parse(
     source: Union[str, bytes, ast.AST],
     filename: str = "<unknown>",
@@ -76,7 +86,9 @@ def parse(
 if sys.version_info >= (3, 9):
 
     def unparse(ast_obj: ast.Module) -> str:
-        return PdcNodeBase.Unparser().visit(ast_obj)
+        visit = PdcNodeBase.Unparser().visit(ast_obj)
+        assert isinstance(visit, str)
+        return visit
 
 
 _PdcDirectiveClassT = TypeVar("_PdcDirectiveClassT", bound=PdcDirectiveProtocol)
@@ -152,6 +164,8 @@ class PdcNodeBase(ast.AST, Generic[_PdcDirectiveClassT]):
                     merged = node_a.as_merged(node_b)
                     if merged:
                         return merged
+
+                return None
 
         tree_with_merged_directives = MergePdcNodes().visit(tree_with_directives)
 
@@ -340,7 +354,6 @@ class PdcOutputNode(ast.AST):
     """
     An output node in the tree is used to make the conversion code output something (as in a print '<code>' or a
     yield '<code>').  It is an intermediate step and should be run through the `PdcOutputNode.convert_tree()` method
-
     """
 
     def convert_tree(self, tree: ast.AST) -> ast.AST:
@@ -352,3 +365,5 @@ class PdcOutputNode(ast.AST):
             def visit_PdcOutputNode(self, node: ast.AST) -> ast.AST:
                 assert isinstance(node, PdcOutputNode)
                 return node.to_output()
+
+        return RewriteOutputNodes().visit(tree)
