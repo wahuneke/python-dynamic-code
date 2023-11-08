@@ -13,7 +13,7 @@ from python_dynamic_code.parse.pdc_nodes import PdcGroup
 from python_dynamic_code.parse.pdc_nodes import PdcNode
 
 
-def test_find_pdc_nodes():
+def test_find_pdc_nodes() -> None:
     """Simple parse and walk showing that we can distinguish PDC nodes (comments that hold a PDC directive)"""
     source = dedent(
         """

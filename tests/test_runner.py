@@ -1,8 +1,9 @@
 """The "Stream" class is supposed to represent the wrapper that contains the fast path code to which we are attaching"""
 import sys
+from pathlib import Path
 from textwrap import dedent
 from types import ModuleType
-from typing import Generator
+from typing import Generator, Callable, Tuple
 
 import pytest
 
@@ -14,7 +15,7 @@ _module_counter = 1
 
 
 @pytest.fixture
-def temporary_module(tmp_path) -> Generator[ModuleType, None, None]:
+def temporary_module(tmp_path: Path) -> Generator[ModuleType, None, None]:
     """Create a new Python file and import it as a module"""
     global _module_counter
     module_file = tmp_path.joinpath("tmp_module.py")
@@ -44,7 +45,7 @@ def temporary_module(tmp_path) -> Generator[ModuleType, None, None]:
     del sys.modules[module_name]
 
 
-def test_basic_parse():
+def test_basic_parse() -> None:
     source = dedent(
         """\
     def my_func(a: int, b: str) -> tuple:
@@ -61,7 +62,7 @@ def test_basic_parse():
     )
 
 
-def test_basic_func_parse(temporary_module):
+def test_basic_func_parse(temporary_module: ModuleType) -> None:
     stream = PdcStream("test", temporary_module.func_a)
     assert unparse(stream.source_ast) == dedent(
         """\
@@ -71,21 +72,21 @@ def test_basic_func_parse(temporary_module):
     )
     assert stream.source_ast.body[0].lineno == 5
 
-    new_func = stream.add_new_function(stream.source_ast)
+    new_func: Callable[[int, str], Tuple[int, str]] = stream.add_new_function(stream.source_ast)
 
     # This behaves as expected
     assert new_func.__name__.startswith("__pdc")
     assert new_func(1, "hi") == (2, "hi")
 
 
-def test_module_global_access(temporary_module):
+def test_module_global_access(temporary_module: ModuleType) -> None:
     stream = PdcStream("test", temporary_module.func_a)
     stream_b = PdcStream("test", temporary_module.func_b)
 
     assert temporary_module.a_global_variable == 100
 
-    new_func = stream.add_new_function(stream.source_ast)
-    new_func_b = stream_b.add_new_function(stream_b.source_ast)
+    new_func: Callable[[int, str], Tuple[int, str]] = stream.add_new_function(stream.source_ast)
+    new_func_b: Callable[[int, str], Tuple[int, str]] = stream_b.add_new_function(stream_b.source_ast)
 
     assert temporary_module.a_global_variable == 100
 

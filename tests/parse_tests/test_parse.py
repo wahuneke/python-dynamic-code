@@ -69,7 +69,7 @@ def test_catch_directive_errors(bad_input, expected_exception_string) -> None:
 
 
 class TestSectionParse:
-    def test_simple_section_parse(self):
+    def test_simple_section_parse(self) -> None:
         pdc = PdcStream(
             "test",
             dedent(
@@ -84,7 +84,7 @@ class TestSectionParse:
         assert len(section) == 1
         assert section[0].start_directive.section_name == "section 1"
 
-    def test_simple_subsections_parse(self):
+    def test_simple_subsections_parse(self) -> None:
         sections = do_parse(
             dedent(
                 """\
@@ -143,7 +143,7 @@ class TestSectionParse:
         ),
     ],
 )
-def test_line_directive_parse(input_code, expect_line_attachments):
+def test_line_directive_parse(input_code, expect_line_attachments) -> None:
     """A few simple tests for parsing line directives"""
     sections = do_parse(input_code)
 
@@ -151,7 +151,7 @@ def test_line_directive_parse(input_code, expect_line_attachments):
     assert sections[0].line_attachments == expect_line_attachments
 
 
-def test_simple_directive_parse():
+def test_simple_directive_parse() -> None:
     class PdcDirectiveTest(PdcDirective):
         pass
 

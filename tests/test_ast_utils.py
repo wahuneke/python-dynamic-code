@@ -65,7 +65,7 @@ def test_node_merger() -> None:
     assert len(tree.body) == 1
 
 
-def test_find_ast_commentsv2():
+def test_find_ast_commentsv2() -> None:
     """Do a simple parse and compile to demonstrate that comments v2 is working"""
     source = dedent(
         """
